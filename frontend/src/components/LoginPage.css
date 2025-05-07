@@ -1,0 +1,118 @@
+.login-container {
+    background-color: #2a1a5e;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    position: relative;
+    padding: 20px;
+  }
+  
+  .logo-container {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+  }
+  
+  .school-logo {
+    width: 230px;  
+    height: auto;
+  }
+  
+  .description-card {
+    background-color: #2a1a5e;
+    color: rgb(242, 141, 0);
+    padding: 20px;
+    border-radius: 15px;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    margin-bottom: 20px;
+    box-shadow: 0px 4px 30px rgba(0, 0, 0, 0.15);
+  }
+  h4 {
+    font-size: 40px;
+    font-weight: bold;
+    color: rgb(255, 255, 255);
+    margin-top: 0;
+  }
+  
+  p {
+    font-size: 16px;
+    color: white;
+    margin-top: 10px;
+  }
+  
+  .login-form {
+    background-color: white;
+    border-radius: 15px;
+    padding: 40px;
+    box-shadow: 0px 4px 30px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  label {
+    font-size: 16px;
+    color: #333;
+    display: block;
+    margin-bottom: 8px;
+  }
+  
+  .input-field {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    font-size: 16px;
+    box-sizing: border-box;
+  }
+  
+  .input-field:focus {
+    outline: none;
+    border-color: #2a1a5e;
+    box-shadow: 0 0 8px rgba(42, 26, 94, 0.5);
+  }
+  
+  .login-btn {
+    background-color: #2a1a5e;
+    border-color: #2a1a5e;
+    color: white;
+    font-size: 18px;
+    padding: 15px 0;
+    width: 100%;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+  }
+  
+  .login-btn:hover {
+    background-color: #FF6F15;
+    border-color: #414216;
+  }
+  
+  .forgot-password {
+    margin-top: 15px;
+    text-align: center;
+  }
+  
+  .forgot-password a {
+    color: #2a1a5e;
+    text-decoration: none;
+    font-size: 16px;
+  }
+  
+  .forgot-password a:hover {
+    text-decoration: underline;
+  }
+  
+  .text-danger {
+    color: #ff4d4d;
+    font-size: 14px;
+    margin-top: 10px;
+  }
+  

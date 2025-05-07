@@ -1,0 +1,98 @@
+1. Table admins (Administrateurs)
+CREATE TABLE admins (
+    id SERIAL PRIMARY KEY,
+    nom VARCHAR(255),
+    prenom VARCHAR(255),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    image_admin BYTEA,
+    fonction VARCHAR(255)
+);
+2. Table employees (Employés)
+
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    nom VARCHAR(255),
+    prenom VARCHAR(255),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    fonction VARCHAR(255),   -- soit professor ou Direction Pédagogique 
+    image_employee BYTEA,  
+    emploi_du_temps BYTEA,  
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    isActive BOOLEAN DEFAULT TRUE,
+    formation_id INT REFERENCES formations(id) ON DELETE CASCADE
+
+);
+3. Table formations (Formations)
+
+CREATE TABLE formations (
+    id SERIAL PRIMARY KEY,
+    nom VARCHAR(255),
+    description TEXT,
+    date_debut DATE,
+    date_fin DATE,
+    status VARCHAR(50)
+);
+4. Table groupes (Groupes)
+CREATE TABLE groupes (
+    id SERIAL PRIMARY KEY,
+    formation_id INT REFERENCES formations(id) ON DELETE CASCADE,
+    nom VARCHAR(255),
+    nombre_etudiants INT,
+    emploi_du_temps BYTEA,  
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+5. Table students (Étudiants)
+CREATE TABLE students (
+    id SERIAL PRIMARY KEY,
+    nom VARCHAR(255),
+    prenom VARCHAR(255),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    telephone VARCHAR(20),
+    date_naissance DATE,
+    groupe_id INT REFERENCES groupes(id) ON DELETE SET NULL,
+    status VARCHAR(50), --  ca pour active ou not active pas le status de absence 
+    image_student BYTEA,  
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+6. Table attendance_students (Présences et Absences)
+CREATE TABLE attendance_students (
+    id SERIAL PRIMARY KEY,
+    student_id INT REFERENCES students(id) ON DELETE CASCADE,
+    date DATE,
+    status VARCHAR(50),  -- 'présent', 'absent', ou 'absent justifié'
+    note TEXT
+);
+
+7. Table attendance_employees (Présences et Absences)
+CREATE TABLE attendance_employees (
+    id SERIAL PRIMARY KEY,
+    employee_id INT REFERENCES employees(id) ON DELETE CASCADE,
+    date DATE,
+    status VARCHAR(50),  -- 'présent', 'absent', ou 'absent justifié'
+    note TEXT
+);
+8. Table cours_hours (Heures de Cours)
+CREATE TABLE cours_hours (
+    id SERIAL PRIMARY KEY,
+    teacher_id INT REFERENCES employees(id) ON DELETE CASCADE,
+    formation_id INT REFERENCES formations(id) ON DELETE CASCADE,
+    start_time TIME,
+    end_time TIME,
+    pause_time INTERVAL,
+    total_hours DECIMAL,
+    date DATE
+);
+9. Table calendar (Calendrier)
+CREATE TABLE calendar (
+    id SERIAL PRIMARY KEY,
+    student_id INT REFERENCES students(id) ON DELETE CASCADE,
+    lesson_date DATE,
+    status VARCHAR(50),  -- 'présent' ou 'absent'
+    formation_id INT REFERENCES formations(id) ON DELETE CASCADE
+);
