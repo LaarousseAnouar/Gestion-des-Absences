@@ -20,18 +20,38 @@ const addGroup = async (req, res) => {
 };
 
 
+const getFormations = async (req, res) => {
+  try {
+    const result = await client.query('SELECT * FROM formations');
+    res.json(result.rows); // Retourner toutes les formations
+  } catch (err) {
+    console.error('Erreur lors de la récupération des formations:', err);
+    res.status(500).json({ error: 'Erreur lors de la récupération des formations.' });
+  }
+};
+
 // Ajout de la fonction pour obtenir les groupes par formation
 const getGroupsByFormation = async (req, res) => {
-  const { formation_id } = req.query;  // Récupérer la formation via le query parameter, formation_id ici
+  const { formation } = req.query;  // Récupérer la formation via le query parameter
+
+  console.log("Formation demandée :", formation);  // Ajouter cette ligne pour déboguer
+
+  if (!formation) {
+    return res.status(400).json({ error: "Le paramètre 'formation' est requis." });
+  }
 
   try {
     const result = await client.query(`
       SELECT g.id, g.nom
       FROM groupes g
       JOIN formations f ON g.formation_id = f.id
-      WHERE f.id = $1  // Use parameterized query
-    `, [formation_id]);
-    
+      WHERE f.nom = $1
+    `, [formation]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Aucun groupe trouvé pour cette formation." });
+    }
+
     res.json(result.rows);  // Retourner les groupes de la formation sélectionnée
   } catch (err) {
     console.error("Erreur lors de la récupération des groupes :", err);
@@ -39,7 +59,9 @@ const getGroupsByFormation = async (req, res) => {
   }
 };
 
+
 module.exports = {
   addGroup,
   getGroupsByFormation,
+  getFormations,
 };
