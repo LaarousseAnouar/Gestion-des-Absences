@@ -16,6 +16,8 @@ const DashboardProf = () => {
   const [elapsedTime, setElapsedTime] = useState(0); // État pour le temps écoulé en secondes
   const [timerActive, setTimerActive] = useState(false); // Pour savoir si le timer est en cours
 
+  const [isRunning, setIsRunning] = useState(false); // Suivi de l'état du compteur
+  let timer; // Variable pour le timer
   const [selectedFormation, setSelectedFormation] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
   const [formations, setFormations] = useState([]);
@@ -29,6 +31,8 @@ const DashboardProf = () => {
   const [view, setView] = useState(''); // 'present', 'absent', 'total'
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState({});
+
+
 
   // Vérification si l'email est disponible
   if (!email) {
@@ -60,18 +64,17 @@ const DashboardProf = () => {
   }, [email]);
 
   useEffect(() => {
-    let interval;
-
     if (timerActive) {
-      interval = setInterval(() => {
-        setElapsedTime((prevTime) => prevTime + 1); // Ajouter une seconde à chaque intervalle
+      timer = setInterval(() => {
+        setElapsedTime((prevTime) => prevTime + 1); // Incrémente chaque seconde
       }, 1000);
     } else {
-      clearInterval(interval); // Nettoyer l'intervalle lorsque le timer est arrêté
+      clearInterval(timer); // Arrêter le timer lorsque timerActive devient false
     }
 
-    return () => clearInterval(interval); // Nettoyer l'intervalle au démontage
+    return () => clearInterval(timer); // Nettoyer l'intervalle lors du démontage du composant
   }, [timerActive]);
+
   //+}++++++}++}}}+}}}}++++++++++++++}}}}}+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++}
   useEffect(() => {
     fetchCourses();
@@ -178,18 +181,34 @@ const DashboardProf = () => {
   }
 
   const handleStartClick = () => {
-    setTimerActive(true); // Commencer le timer
-    setStartTime(new Date()); // Enregistrer l'heure de début
-    setElapsedTime(0); // Réinitialiser le temps écoulé
+    setIsRunning(true); // Déclencher le démarrage du compteur
+    setTimerActive(true); // Activer le timer
   };
 
-  // Arrêter le cours
+  // Fonction pour arrêter le compteur
   const handleStopClick = () => {
-    setTimerActive(false); // Arrêter le timer
+    setIsRunning(false); // Le compteur est arrêté
+    setTimerActive(false); // Désactiver le timer
   };
 
+  // Fonction pour reprendre le compteur
+  const handleResumeClick = () => {
+    if (!isRunning) {
+      setIsRunning(true); // Relancer le compteur
+      setTimerActive(true); // Réactiver le timer
+    }
+  };
 
-
+  const handleFinishClick = () => {
+    const userConfirmed = window.confirm("Voulez-vous vraiment terminer ce cours ?");
+    if (userConfirmed) {
+      // Si l'utilisateur confirme, on arrête le cours
+      setIsRunning(false);
+      setTimerActive(false);
+      setElapsedTime(0); // Réinitialiser le temps si nécessaire
+    }
+  };
+  
   // Formater le temps en heures:minutes:secondes
   const formatTime = (timeInSeconds) => {
     const hours = Math.floor(timeInSeconds / 3600);
@@ -201,6 +220,7 @@ const DashboardProf = () => {
       .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
+// ++++}}}}++}++++++++++++}}}+}}}}}}}+++++++++++++++++}}+++++}}}}}}}++++}}}++++++}++++}
   const handleSectionChange = (section) => {
     setActiveSection(section); // Mettez à jour la section active
   };
@@ -363,54 +383,64 @@ const DashboardProf = () => {
       </div>
     )}
 
-    {/* Section 3:  */}
-    <div className="space-y-4">
-      <button className="bg-purple-100 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-full text-left" onClick={handleStartClick}>
+
+{/* Section 3 */}
+
+<div className="space-y-4">
+      {/* Démarrer le cours */}
+      {!isRunning && (
+        <button className="bg-purple-100 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-full text-left" onClick={handleStartClick}>
+          <div className="flex justify-between items-center">
+            <div className="flex flex-col">
+              <p className="text-[12px] text-[#4B5C8A] font-semibold">Aucune formation sélectionnée</p>
+              <p className="text-lg text-[#4B5C8A] font-semibold">Démarrer le cours</p>
+            </div>
+            <div className="text-[#4B5C8A] text-lg font-semibold">{formatTime(elapsedTime)}</div>
+          </div>
+        </button>
+      )}
+
+      {/* Arrêter le cours */}
+      {isRunning && (
+        <button className="bg-blue-100 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-full text-left" onClick={handleStopClick}>
+          <div className="flex justify-between items-center">
+            <div className="flex flex-col">
+              <p className="text-[12px] text-[#4B5C8A] font-semibold">Aucune formation sélectionnée</p>
+              <p className="text-lg text-[#4B5C8A] font-semibold">Arrêter</p>
+            </div>
+            <div className="text-[#4B5C8A] text-lg font-semibold">{formatTime(elapsedTime)}</div>
+          </div>
+        </button>
+      )}
+
+      {/* Reprendre le cours */}
+      {!isRunning && elapsedTime > 0 && (
+        <button className="bg-green-100 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-full text-left" onClick={handleResumeClick}>
+          <div className="flex justify-between items-center">
+            <div className="flex flex-col">
+              <p className="text-[12px] text-[#4B5C8A] font-semibold">Aucune formation sélectionnée</p>
+              <p className="text-lg text-[#4B5C8A] font-semibold">Reprendre</p>
+            </div>
+            <div className="text-[#4B5C8A] text-lg font-semibold">{formatTime(elapsedTime)}</div>
+          </div>
+        </button>
+      )}
+
+      {/* Terminer le cours */}
+      {isRunning && (
+      <button className="bg-yellow-100 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-full text-left" onClick={handleFinishClick}>
         <div className="flex justify-between items-center">
           <div className="flex flex-col">
             <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedCourse || 'Aucune formation sélectionnée'}</p>
-            <p className="text-lg text-[#4B5C8A] font-semibold">Démarrer le cours</p>
-            <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedGroup || 'Aucun groupe sélectionné'}</p>
+            <p className="text-lg text-[#4B5C8A] font-semibold">Terminer le cours</p>
           </div>
           <div className="text-[#4B5C8A] text-lg font-semibold">{formatTime(elapsedTime)}</div>
         </div>
       </button>
-
-      <div className="space-y-4">
-        <button className="bg-blue-100 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-full text-left" onClick={handleStopClick}>
-          <div className="flex justify-between items-center">
-            <div className="flex flex-col">
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedCourse || 'Aucune formation sélectionnée'}</p>
-              <p className="text-lg text-[#4B5C8A] font-semibold">Arrêter</p>
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedGroup || 'Aucun groupe sélectionné'}</p>
-            </div>
-            <div className="text-[#4B5C8A] text-lg font-semibold">{formatTime(elapsedTime)}</div>
-          </div>
-        </button>
-
-        <button className="bg-green-100 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-full text-left" onClick={handleStartClick}>
-          <div className="flex justify-between items-center">
-            <div className="flex flex-col">
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedCourse || 'Aucune formation sélectionnée'}</p>
-              <p className="text-lg text-[#4B5C8A] font-semibold">Reprendre</p>
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedGroup || 'Aucun groupe sélectionné'}</p>
-            </div>
-            <div className="text-[#4B5C8A] text-lg font-semibold">{formatTime(elapsedTime)}</div>
-          </div>
-        </button>
-
-        <button className="bg-yellow-100 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-full text-left" onClick={handleStopClick}>
-          <div className="flex justify-between items-center">
-            <div className="flex flex-col">
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedCourse || 'Aucune formation sélectionnée'}</p>
-              <p className="text-lg text-[#4B5C8A] font-semibold">Terminer le cours</p>
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedGroup || 'Aucun groupe sélectionné'}</p>
-            </div>
-            <div className="text-[#4B5C8A] text-lg font-semibold">{formatTime(elapsedTime)}</div>
-          </div>
-        </button>
-      </div>
+    )}
     </div>
+
+
   </div>
 )}
 

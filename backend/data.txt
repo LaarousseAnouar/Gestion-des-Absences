@@ -82,6 +82,7 @@ CREATE TABLE cours_hours (
     id SERIAL PRIMARY KEY,
     teacher_id INT REFERENCES employees(id) ON DELETE CASCADE,
     formation_id INT REFERENCES formations(id) ON DELETE CASCADE,
+    groupe_id INT REFERENCES groupes(id) ON DELETE CASCADE,
     start_time TIME,
     end_time TIME,
     pause_time INTERVAL,
