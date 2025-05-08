@@ -96,3 +96,22 @@ CREATE TABLE calendar (
     status VARCHAR(50),  -- 'présent' ou 'absent'
     formation_id INT REFERENCES formations(id) ON DELETE CASCADE
 );
+
+
+// login :password :  password123  // pour tout les password
+//   proffeseur :
+Jaroudi@iteip.com ,
+Achaachaa@iteip.com ,
+Benzakour@iteip.com ,
+Fennane@iteip.com ,
+
+
+// admin :  Mtafi@iteip.com 
+
+//  Direction Pédagogique :
+Barhazi@iteip.com ,
+Rhita@iteip.com ,
+
+
+
+        

@@ -26,7 +26,9 @@ const DashboardProf = () => {
 
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]); // Date par défaut : aujourd'hui
 
-    const [view, setView] = useState(''); // 'present', 'absent', 'total'
+  const [view, setView] = useState(''); // 'present', 'absent', 'total'
+  const [students, setStudents] = useState([]);
+  const [attendance, setAttendance] = useState({});
 
   // Vérification si l'email est disponible
   if (!email) {
@@ -82,6 +84,43 @@ const DashboardProf = () => {
     }
   }, [selectedCourse]);
   
+
+  useEffect(() => {
+    // Fetch all students data
+    axios.get('http://localhost:3000/api/students')
+      .then(response => {
+        setStudents(response.data);
+      })
+      .catch(error => {
+        console.error("Erreur lors de la récupération des étudiants :", error);
+      });
+  }, []);
+
+  useEffect(() => {
+    students.forEach(student => {
+      axios.get(`http://localhost:3000/api/attendance?date=${selectedDate}&id=${student.id}&type=student`)
+        .then(response => {
+          // Vérifier si la réponse contient bien le champ 'status'
+          const status = response.data.status;
+          
+          // Si 'status' est défini et valide, on l'utilise. Sinon, on définit 'aucune-présence'.
+          setAttendance(prevState => ({
+            ...prevState,
+            [student.id]: status && (status === 'present' || status === 'absent') ? status : 'aucune-présence'
+          }));
+        })
+        .catch(error => {
+          console.error(`Erreur lors de la récupération de la présence pour l'étudiant ${student.id}:`, error);
+          // Si l'appel API échoue, définir 'aucune-présence'
+          setAttendance(prevState => ({
+            ...prevState,
+            [student.id]: 'aucune-présence'
+          }));
+        });
+    });
+  }, [selectedDate, students]);
+  
+
   // Function to fetch courses
   const fetchCourses = async () => {
     try {
@@ -149,6 +188,8 @@ const DashboardProf = () => {
     setTimerActive(false); // Arrêter le timer
   };
 
+
+
   // Formater le temps en heures:minutes:secondes
   const formatTime = (timeInSeconds) => {
     const hours = Math.floor(timeInSeconds / 3600);
@@ -169,17 +210,8 @@ const DashboardProf = () => {
     setSelectedDate(e.target.value); // Stocke la date sélectionnée dans l'état
   };
   
-
-  const students = [
-    { id: 1, name: 'Anouar laarousse', email: 'laarousse@gmail.com', status: 'present' },
-    { id: 3, name: 'hamza ghazi', email: 'ghazi@gmail.com', status: 'present' },
-    { id: 4, name: 'wassim laaribi', email: 'laaribi@gmail.com', status: 'absent' },
-  ];
-
-
-  // Fonction pour changer la vue en fonction du clic
+  // +}+++++}+++}}}}}++}}}++}+}}}}+}}++++++}}++++++}}}}}}}+}}+}++++++++++++++}}+++++++}++++++++++++++++++++++++}
   const handleViewChange = (type) => {
-    // Si le même bouton est cliqué deux fois, réinitialiser la vue (masquer les données)
     if (view === type) {
       setView('');
     } else {
@@ -189,8 +221,8 @@ const DashboardProf = () => {
 
   // Filtrage des étudiants en fonction du statut
   const filteredStudents = students.filter(student => {
-    if (view === 'present') return student.status === 'present';
-    if (view === 'absent') return student.status === 'absent';
+    if (view === 'present') return attendance[student.id] === 'present';
+    if (view === 'absent') return attendance[student.id] === 'absent';
     return true; // Total, afficher tous les étudiants
   });
 
@@ -402,13 +434,11 @@ const DashboardProf = () => {
 )}
 
 
-
-
 {activeSection === "attendance" && (
   <div className="p-6 bg-white rounded-lg shadow-xl max-w-4xl mx-auto mt-6">
     {/* Icone de filtre */}
     <div className="flex justify-between items-center mb-4">
-      <h2 className="text-[#2B3A67] font-semibold text-xl leading-6 text-left">Statistique </h2>
+      <h2 className="text-[#2B3A67] font-semibold text-xl leading-6 text-left">Statistique</h2>
   
       {/* Bouton Filtrer */}
       <button 
@@ -419,6 +449,7 @@ const DashboardProf = () => {
         Filtrer
         <i className="fas fa-chevron-down text-2xl mt-1 text-white"></i>
       </button>
+
       {/* Icone Date */}
       <div className="flex items-center gap-2">
         <i className="fas fa-calendar-alt text-2xl text-[#2B3A67]"></i>
@@ -476,84 +507,97 @@ const DashboardProf = () => {
       </div>
     )}
 
-    {/* Section 3: */}
+    {/* Section des Boutons de Filtrage */}
     <div className="mt-8 space-y-6">
-        <div className="flex justify-between items-center w-full gap-6">
-          <button 
-            className="bg-green-300 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-1/3 text-left" 
-            onClick={() => handleViewChange('present')}
-          >
-            <div className="flex flex-col">
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedCourse || 'Aucune formation sélectionnée'}</p>
-              <p className="text-[20px] text-[#4B5C8A] font-semibold">L'etudiant Present</p>
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedGroup || 'Aucun groupe sélectionné'}</p>
+      <div className="flex justify-between items-center w-full gap-6">
+        <button 
+          className="bg-green-300 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-1/3 text-left" 
+          onClick={() => handleViewChange('present')}
+        >
+          <div className="flex flex-col">
+            <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedCourse || 'Aucune formation sélectionnée'}</p>
+            <p className="text-[20px] text-[#4B5C8A] font-semibold">L'étudiant Présent</p>
+            <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedGroup || 'Aucun groupe sélectionné'}</p>
+          </div>
+        </button>
 
-            </div>
-          </button>
+        <button 
+          className="bg-red-400 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-1/3 text-left" 
+          onClick={() => handleViewChange('absent')}
+        >
+          <div className="flex flex-col">
+            <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedCourse || 'Aucune formation sélectionnée'}</p>
+            <p className="text-[20px] text-[#4B5C8A] font-semibold">L'étudiant Absent</p>
+            <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedGroup || 'Aucun groupe sélectionné'}</p>
+          </div>
+        </button>
 
-          <button 
-            className="bg-red-400 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-1/3 text-left" 
-            onClick={() => handleViewChange('absent')}
-          >
-            <div className="flex flex-col">
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedCourse || 'Aucune formation sélectionnée'}</p>
-              <p className="text-[20px] text-[#4B5C8A] font-semibold">L'etudiant Absent</p>
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedGroup || 'Aucun groupe sélectionné'}</p>
-
-            </div>
-          </button>
-
-          <button 
-            className="bg-blue-300 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-1/3 text-left" 
-            onClick={() => handleViewChange('total')}
-          >
-            <div className="flex flex-col">
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedCourse || 'Aucune formation sélectionnée'}</p>
-              <p className="text-[20px] text-[#4B5C8A] font-semibold">Total d'etudiants</p>
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedGroup || 'Aucun groupe sélectionné'}</p>
-
-            </div>
-          </button>
-        </div>
+        <button 
+          className="bg-blue-300 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-1/3 text-left" 
+          onClick={() => handleViewChange('total')}
+        >
+          <div className="flex flex-col">
+            <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedCourse || 'Aucune formation sélectionnée'}</p>
+            <p className="text-[20px] text-[#4B5C8A] font-semibold">Total d'étudiants</p>
+            <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedGroup || 'Aucun groupe sélectionné'}</p>
+          </div>
+        </button>
       </div>
+    </div>
 
-      {/* Affichage des étudiants */}
-      {view && (
-        <div className="mt-6">
-          <h3 className="text-xl font-semibold text-[#4B5C8A] mb-4">
-            {view === 'present' ? 'Étudiants Présents' : view === 'absent' ? 'Étudiants Absent' : 'Tous les Étudiants'}
-          </h3>
-          <table className="min-w-full bg-white border border-gray-200">
-            <thead>
-              <tr>
-                <th className="px-4 py-2 border-b text-left">Nom Complet</th>
-                <th className="px-4 py-2 border-b text-left">Email</th>
-                <th className="px-4 py-2 border-b text-left">Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStudents.length > 0 ? (
-                filteredStudents.map((student) => (
-                  <tr key={student.id}>
-                    <td className="px-4 py-2 border-b">{student.name}</td>
-                    <td className="px-4 py-2 border-b">{student.email}</td>
-                    <td className="px-4 py-2 border-b">{student.status}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="3" className="px-4 py-2 text-center">Aucun étudiant trouvé</td>
+    {/* Affichage des étudiants selon le filtre */}
+    {view && (
+  <div className="mt-6">
+    <h3 className="text-xl font-semibold text-[#4B5C8A] mb-4">
+      Étudiants {view === 'present' ? 'Présents' : view === 'absent' ? 'Absents' : 'Totaux'}
+    </h3>
+    <div className="overflow-x-auto bg-white shadow-md rounded-lg">
+      <table className="min-w-full table-auto">
+        <thead className="bg-[#4B5C8A] text-white">
+          <tr>
+            <th className="px-6 py-3 text-left text-sm font-medium">Nom Complet</th>
+            <th className="px-6 py-3 text-left text-sm font-medium">Email</th>
+            <th className="px-6 py-3 text-left text-sm font-medium">Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredStudents.length > 0 ? (
+            // Filtrage selon le statut
+            filteredStudents
+              .filter(student => student.groupe === selectedGroup && student.formation === selectedCourse) // Filtrage par groupe et formation
+              .filter(student => {
+                if (view === 'present') return attendance[student.id] === 'present'; // Filtrer les étudiants présents
+                if (view === 'absent') return attendance[student.id] === 'absent'; // Filtrer les étudiants absents
+                return true; // Si "total", afficher tous les étudiants
+              })
+              .map((student) => (
+                <tr key={student.id} className="border-t hover:bg-gray-100">
+                  <td className="px-6 py-4 text-sm text-gray-700">{student.name}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{student.email}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {attendance[student.id] === 'aucune-présence' ? (
+                      <span className="text-gray-500">Aucune Présence</span> // Afficher "Aucune Présence" en gris
+                    ) : (
+                      <span className={`font-semibold ${attendance[student.id] === 'present' ? 'text-green-500' : 'text-red-500'}`}>
+                        {attendance[student.id] === 'present' ? 'Présent' : 'Absent'}
+                      </span>
+                    )}
+                  </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      
+              ))
+          ) : (
+            <tr>
+              <td colSpan="3" className="px-6 py-4 text-center text-sm text-gray-500">Aucun étudiant trouvé</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
   </div>
 )}
 
+  </div>
+)}
 
 
         </section>
