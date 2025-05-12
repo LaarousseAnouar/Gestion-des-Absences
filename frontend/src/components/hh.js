@@ -3,9 +3,7 @@ import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";  // Importer le style du calendrier
 
-const GestionGlobalPage = () => {
-  const today = new Date().toISOString().split('T')[0];  // Date d'aujourd'hui
-
+const hh = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTab, setSelectedTab] = useState("Employee");
   const [employees, setEmployees] = useState([]);
@@ -13,11 +11,12 @@ const GestionGlobalPage = () => {
   const [groups, setGroups] = useState([]);  // Liste des groupes
   const [selectedFormation, setSelectedFormation] = useState("");  // Formation sélectionnée
   const [selectedGroup, setSelectedGroup] = useState("");  // Groupe sélectionné
-  const [selectedDate, setSelectedDate] = useState(today);  // Date choisie par l'utilisateur
+  const [selectedDate, setSelectedDate] = useState("");  // Date choisie par l'utilisateur
   const [attendanceStatus, setAttendanceStatus] = useState(null); // Statut de présence
   const [showCalendar, setShowCalendar] = useState(false); // Etat pour afficher/masquer le calendrier
   const [attendanceData, setAttendanceData] = useState({});
 
+  const today = new Date().toISOString().split('T')[0];  // Date d'aujourd'hui
   const isEtudiant = selectedTab === "Etudiant";
   const showEmployeeTable = selectedTab === "Employee" || selectedTab === "Etudiant";
   {/*     /////////////////////////////////////////////                                         */}
@@ -92,54 +91,53 @@ const GestionGlobalPage = () => {
     return matchesFormation && matchesGroup;
   });
 
-// Fetch attendance status for a specific employee/student
-const fetchAttendanceStatusFromApi = async (id, date, type) => {
-  try {
-    const res = await axios.get(`http://localhost:3000/api/attendance?date=${date}&id=${id}&type=${type}`);
-    console.log("Attendance status response:", res.data);  // This logs the response object
+  // Vérifier la présence d'un étudiant/employé pour la date sélectionnée
+  const fetchAttendanceStatus = async (data) => {
+    const statusData = {};
+    const today = new Date().toISOString().split('T')[0];  // Date du jour
     
-    // Ensure that you return the 'status' directly (string value)
-    return res.data.status || "Aucune présence";  // Correctly access the 'status' property
-  } catch (err) {
-    console.error("Erreur lors de la récupération du statut de présence :", err);
-    return "Erreur de récupération";  // Return a fallback in case of error
-  }
-};
-
-// Fetch attendance status
-const fetchAttendanceStatus = async (data) => {
-  const statusData = {};  // This will store the status for each employee/student
-  const today = new Date().toISOString().split('T')[0];  // Get today's date
-
-  for (const emp of data) {
-    // Use selectedTab to determine if we are fetching for employees or students
-    const type = selectedTab.toLowerCase() === "employee" ? "employee" : "student";
-    
-    // Fetch the attendance status for the specific employee/student
-    const status = await fetchAttendanceStatusFromApi(emp.id, today, type);
-    statusData[emp.id] = status;  // Store the status directly as a string value
-  }
-
-  console.log("Updated statusData:", statusData);  // Check the updated statusData object
-  setAttendanceData(statusData);  // Update the state with the status data
-};
-
+    // Vérification du type de l'élément (employé ou étudiant)
+    console.log("Récupération des statuts pour : ", selectedTab);
   
+    // Boucle à travers les employés/étudiants et récupérer leur statut de présence
+    for (const emp of data) {
+      console.log(`Récupération du statut pour ID ${emp.id}`);
+      const status = await fetchAttendanceStatusFromApi(emp.id, today, selectedTab.toLowerCase());
+      statusData[emp.id] = status;
+    }
+  
+    console.log("Données de présence mises à jour :", statusData);  // Vérifier les données de présence
+    setAttendanceData(statusData);  // Mettre à jour l'état avec les statuts de présence
+  };
   
 
+  // Récupérer le statut de présence à partir de l'API pour un employé/étudiant spécifique
+  const fetchAttendanceStatusFromApi = async (id, date, type) => {
+    try {
+      const res = await axios.get(`http://localhost:3000/api/attendance?date=${date}&id=${id}&type=${type}`);
+      console.log("Réponse de l'API pour l'ID:", id, "Statut:", res.data); // Afficher la réponse de l'API
+      return res.data.status || "Aucune présence";  // Retourner le statut ou "Aucune présence"
+    } catch (err) {
+      console.error("Erreur lors de la récupération du statut de présence :", err);
+      return "Erreur de récupération";  // Retourner un message d'erreur si l'appel API échoue
+    }
+  };
+  
+  
+  
+  
+  
 
-const handleDateChange = (e) => {
-  setSelectedDate(e.target.value);
-};
+  const handleDateChange = (date) => {
+    setSelectedDate(date.toISOString().split('T')[0]);
+    console.log("Date sélectionnée:", selectedDate); // Vérifier si la date est correcte
+  };
+
   
   const getStatusColor = (status) => {
-    if (status === "present") {
-      return "bg-green-500 text-white";  // Green for 'present'
-    }
-    if (status === "absent") {
-      return "bg-red-500 text-white";  // Red for 'absent'
-    }
-    return "bg-gray-300 text-gray-700";  // Default gray for other statuses
+    if (status === "présent") return "bg-green-500 text-white";
+    if (status === "absent") return "bg-red-500 text-white";
+    return "bg-gray-300 text-gray-700";
   };
 
   // Avatar component pour afficher la photo ou les initiales
@@ -203,31 +201,34 @@ const handleDateChange = (e) => {
     }
   };
 
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <div className="w-64 bg-white shadow-md">
         <img src="/images/logo.webp" alt="ITBP Logo" className="w-3/4 mb-8" />
         <div className="mt-6 space-y-4">
-          {["Employee", "Etudiant" , "Ajouter"].map((tab) => (
+          {["Employee", "Ajouter", "Etudiant"].map((tab) => (
             <div
-              key={tab}
-              className={`px-6 py-2 hover:bg-gray-100 cursor-pointer ${selectedTab === tab ? "bg-gray-200" : ""}`}
-              onClick={() => setSelectedTab(tab)}
-            >
-              {tab}
-            </div>
+            key={tab}
+            className={`px-6 py-2 hover:bg-gray-100 cursor-pointer ${selectedTab === tab ? "bg-gray-200" : ""}`}
+            onClick={() => setSelectedTab(tab)}  // Modifie le selectedTab pour que l'on récupère le bon type
+          >
+            {tab}
+          </div>
+          
           ))}
         </div>
       </div>
 
       {/* Main content */}
       <div className="flex-1 p-6">
-        {/* Employee Content */}
-        {selectedTab === "Employee" && (
-          <div>
+        {showEmployeeTable && (
+          <>
             <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-lg mb-6">
-              <h1 className="text-2xl font-semibold text-gray-700">Employee Management</h1>
+              <h1 className="text-2xl font-semibold text-gray-700">
+                {isEtudiant ? "Etudiant Management" : "Employee Management"}
+              </h1>
               <div className="flex items-center space-x-4">
                 <input
                   type="text"
@@ -235,18 +236,57 @@ const handleDateChange = (e) => {
                   className="p-2 border border-gray-300 rounded-lg shadow-sm"
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                {/* Calendar input for selecting date */}
-                <div className="flex items-center gap-2">
-                  <i className="fas fa-calendar-alt text-2xl text-[#2B3A67]"></i>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={handleDateChange}
-                    className="p-2 border rounded-md"
-                  />
-                </div>
+                {isEtudiant && (
+                  <>
+                    <select
+                      className="p-2 border border-gray-300 rounded-lg shadow-sm"
+                      onChange={(e) => setSelectedFormation(e.target.value)} // Mise à jour de la formation sélectionnée
+                      value={selectedFormation}
+                    >
+                      <option value="">Select Formation</option>
+                      {formations.map((formation, index) => (
+                        <option key={index} value={formation.nom}>
+                          {formation.nom}
+                        </option>
+                      ))}
+                    </select>
+
+                    {selectedFormation && (
+                      <select
+                        className="p-2 border border-gray-300 rounded-lg shadow-sm"
+                        onChange={(e) => setSelectedGroup(e.target.value)} // Mise à jour du groupe sélectionné
+                        value={selectedGroup}
+                      >
+                        <option value="">Select Group</option>
+                        {groups.map((group, index) => (
+                          <option key={index} value={group.nom}>
+                            {group.nom}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </>
+                )}
+                <button className="bg-blue-600 text-white p-2 rounded-lg">Filter</button>
+                <button 
+                  className="bg-gray-400 text-white p-2 rounded-lg"
+                  onClick={() => setShowCalendar(!showCalendar)}  // Toggle calendar visibility
+                >
+                  Calendar
+                </button>
               </div>
             </div>
+
+            {showCalendar && (
+              <div className="mb-4">
+                <DatePicker
+                  selected={selectedDate ? new Date(selectedDate) : new Date()}
+                  onChange={(date) => setSelectedDate(date.toISOString().split('T')[0])}  // Update the selected date
+                  dateFormat="yyyy-MM-dd"
+                  className="p-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+            )}
 
             <div className="overflow-x-auto bg-white rounded-lg shadow-md">
               <table className="min-w-full">
@@ -254,14 +294,16 @@ const handleDateChange = (e) => {
                   <tr>
                     <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Nom</th>
                     <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Email</th>
-                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Fonction</th>
+                    {isEtudiant && <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Formation</th>}
+                    {isEtudiant && <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Groupe</th>}
+                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">{!isEtudiant && "Fonction"}</th>
                     <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Date</th>
                     <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Status</th>
                     <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredEmployees.map((emp, index) => (
+                  {filteredByFormationAndGroup.map((emp, index) => (
                     <tr key={index} className="border-b hover:bg-gray-50">
                       <td className="py-3 px-4 text-sm text-gray-700">
                         <div className="flex items-center space-x-2">
@@ -270,18 +312,21 @@ const handleDateChange = (e) => {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-700">{emp.email}</td>
+                      {isEtudiant && (
+                        <td className="py-3 px-4 text-sm text-gray-700">{emp.formation}</td>
+                      )}
+                      {isEtudiant && (
+                        <td className="py-3 px-4 text-sm text-gray-700">{emp.groupe}</td>
+                      )}
                       <td className="py-3 px-4 text-sm text-gray-700">{emp.fonction}</td>
-                      <td className="py-3 px-4 text-sm text-gray-700">{selectedDate}</td>
                       <td className="py-3 px-4 text-sm text-gray-700">
-  <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[emp.id])}`}>
-    {attendanceData[emp.id] === "present" ? "Présent" : 
-     attendanceData[emp.id] === "absent" ? "Absent" : 
-     attendanceData[emp.id] === undefined ? "Aucune présence" : "Erreur"}
-  </span>
-</td>
-
-
-
+                        {selectedDate || today}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-700">
+                        <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[emp.id])}`}>
+                          {attendanceData[emp.id] === "présent" ? "Présent" : attendanceData[emp.id] === "absent" ? "Absent" : "Aucune présence"}
+                        </span>
+                      </td>
                       <td className="py-3 px-4">
                         <button className="text-blue-500 hover:underline text-sm">Edit</button>
                       </td>
@@ -290,105 +335,18 @@ const handleDateChange = (e) => {
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
 
-        {/* Etudiant Content */}
-        {selectedTab === "Etudiant" && (
-          <div>
-            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-lg mb-6">
-              <h1 className="text-2xl font-semibold text-gray-700">Etudiant Management</h1>
-              <div className="flex items-center space-x-4">
-                <input
-                  type="text"
-                  placeholder="Search by name or email"
-                  className="p-2 border border-gray-300 rounded-lg shadow-sm"
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <select
-                  className="p-2 border border-gray-300 rounded-lg shadow-sm"
-                  onChange={(e) => setSelectedFormation(e.target.value)}
-                  value={selectedFormation}
-                >
-                  <option value="">Select Formation</option>
-                  {formations.map((formation, index) => (
-                    <option key={index} value={formation.nom}>
-                      {formation.nom}
-                    </option>
-                  ))}
-                </select>
-                {selectedFormation && (
-                  <select
-                    className="p-2 border border-gray-300 rounded-lg shadow-sm"
-                    onChange={(e) => setSelectedGroup(e.target.value)}
-                    value={selectedGroup}
-                  >
-                    <option value="">Select Group</option>
-                    {groups.map((group, index) => (
-                      <option key={index} value={group.nom}>
-                        {group.nom}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <button className="bg-blue-600 text-white p-2 rounded-lg">Filter</button>
-                {/* Calendar input for selecting date */}
-                <div className="flex items-center gap-2">
-                  <i className="fas fa-calendar-alt text-2xl text-[#2B3A67]"></i>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={handleDateChange}
-                    className="p-2 border rounded-md"
-                  />
-                </div>
+            <div className="flex justify-between items-center mt-6">
+              <p className="text-sm text-gray-600">Showing {filteredByFormationAndGroup.length} entries</p>
+              <div className="flex items-center space-x-2">
+                <button className="bg-gray-300 p-2 rounded-md">Back</button>
+                <button className="bg-gray-300 p-2 rounded-md">Next</button>
               </div>
             </div>
-
-            <div className="overflow-x-auto bg-white rounded-lg shadow-md">
-              <table className="min-w-full">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Nom</th>
-                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Email</th>
-                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Formation</th>
-                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Groupe</th>
-                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Date</th>
-                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Status</th>
-                    <th className="py-3 px-4 text-left text-sm font-medium text-gray-600">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredByFormationAndGroup.map((student, index) => (
-                    <tr key={index} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm text-gray-700">
-                        <div className="flex items-center space-x-2">
-                          <Avatar name={student.name || `${student.nom} ${student.prenom}`} photo={student.photo} />
-                          <span>{student.name || `${student.nom} ${student.prenom}`}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-700">{student.email}</td>
-                      <td className="py-3 px-4 text-sm text-gray-700">{student.formation}</td>
-                      <td className="py-3 px-4 text-sm text-gray-700">{student.groupe}</td>
-                      <td className="py-3 px-4 text-sm text-gray-700">{selectedDate || today}</td>
-                      <td className="py-3 px-4 text-sm text-gray-700">
-  <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[student.id])}`}>
-    {attendanceData[student.id] === "present" ? "Présent" : 
-     attendanceData[student.id] === "absent" ? "Absent" : 
-     attendanceData[student.id] === undefined ? "Aucune présence" : "Erreur"}
-  </span>
-</td>
-
-                      <td className="py-3 px-4">
-                        <button className="text-blue-500 hover:underline text-sm">Edit</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          </>
         )}
+
+
 
 {selectedTab === "Ajouter" && (
   <div className="bg-white p-6 rounded-lg shadow-lg">
@@ -556,11 +514,10 @@ const handleDateChange = (e) => {
   </div>
 )}
 
+
       </div>
     </div>
   );
-
-  
 };
 
-export default GestionGlobalPage;
+export default hh;

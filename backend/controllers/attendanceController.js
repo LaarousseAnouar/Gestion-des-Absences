@@ -8,28 +8,36 @@ const getAttendanceStatus = async (req, res) => {
     return res.status(400).json({ error: "id, date, et type sont requis." });
   }
 
-  try {
-    // Déterminer la table en fonction du type (étudiant ou employé)
-    let table = type === 'employee' ? 'attendance_employees' : 'attendance_students';
+  // Validate the 'type' value to prevent SQL injection
+  const validTypes = ['employee', 'student'];
+  if (!validTypes.includes(type)) {
+    return res.status(400).json({ error: "Type invalide. Utilisez 'employee' ou 'student'." });
+  }
 
+  // Determine the table based on the type
+  const table = type === 'employee' ? 'attendance_employees' : 'attendance_students';
+
+  try {
+    // Query the database for the status
     const result = await client.query(`
       SELECT status
       FROM ${table}
       WHERE ${type}_id = $1 AND date = $2
     `, [id, date]);
 
-    // Si aucune présence n'est trouvée
+    // If no attendance is found
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Aucune présence trouvée pour cette date" });
     }
 
-    // Retourner le statut (présent/absent)
+    // Return the attendance status (present/absent)
     res.json({ status: result.rows[0].status });
   } catch (err) {
     console.error("Erreur lors de la récupération de la présence :", err);
     res.status(500).json({ error: "Erreur lors de la récupération du statut de présence." });
   }
 };
+
 
 // Fonction pour ajouter une nouvelle présence (étudiant/employé)
 const addAttendance = async (req, res) => {

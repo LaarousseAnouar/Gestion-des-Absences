@@ -32,6 +32,9 @@ const DashboardProf = () => {
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState({});
 
+  const [endTime, setEndTime] = useState(null);
+  const [pauseTime, setPauseTime] = useState('00:10:00'); // Default pause time (you can adjust this based on your needs)
+  const [totalHours, setTotalHours] = useState(0); // Initial total hours, will be calculated during the course
 
 
   // Vérification si l'email est disponible
@@ -180,10 +183,39 @@ const DashboardProf = () => {
     return <div>{error}</div>;
   }
 
-  const handleStartClick = () => {
-    setIsRunning(true); // Déclencher le démarrage du compteur
-    setTimerActive(true); // Activer le timer
+  const handleStartClick = async () => {
+    setIsRunning(true);
+    setTimerActive(true);
+  
+    const startTime = new Date();
+    const formattedStartTime = startTime.toISOString().split('T')[1]; // Extract just the time part for start_time
+  
+    setStartTime(formattedStartTime); // Store the start time in the state
+  
+    const courseData = {
+      teacher_id: professorData.id,
+      formation_id: selectedFormation,
+      groupe_id: selectedGroup,
+      start_time: formattedStartTime,
+      end_time: endTime, // Will be calculated later
+      pause_time: pauseTime, // Example pause time
+      total_hours: totalHours, // Will be updated after course completion
+      date: selectedDate, // The selected date for the course
+    };
+  
+    try {
+      await axios.post('http://localhost:3000/api/cours_hours', courseData, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      
+      // Show success alert after course is saved
+      alert('Le cours a été enregistré avec succès!');
+    } catch (error) {
+      console.error('Erreur lors de l\'enregistrement du cours:', error);
+      setError('Erreur lors de l\'enregistrement du cours');
+    }
   };
+  
 
   // Fonction pour arrêter le compteur
   const handleStopClick = () => {
@@ -199,15 +231,43 @@ const DashboardProf = () => {
     }
   };
 
-  const handleFinishClick = () => {
-    const userConfirmed = window.confirm("Voulez-vous vraiment terminer ce cours ?");
-    if (userConfirmed) {
-      // Si l'utilisateur confirme, on arrête le cours
-      setIsRunning(false);
-      setTimerActive(false);
-      setElapsedTime(0); // Réinitialiser le temps si nécessaire
+  const handleFinishClick = async () => {
+    const endTime = new Date(); // Get the current time as end time
+    setEndTime(endTime.toISOString().split('T')[1]); // Store the end time
+    setIsRunning(false);
+    setTimerActive(false);
+  
+    // Calculate total hours: For example, 2 hours minus a 10-minute pause
+    const duration = (endTime - new Date(startTime)) / 1000 / 60 / 60; // Duration in hours
+    const totalHours = duration - (parseInt(pauseTime.split(':')[0]) / 60); // Subtract pause time from duration
+  
+    setTotalHours(totalHours); // Store total hours
+  
+    const courseData = {
+      teacher_id: professorData.id,
+      formation_id: selectedFormation,
+      groupe_id: selectedGroup,
+      start_time: startTime,
+      end_time: endTime.toISOString().split('T')[1], // Just the time part
+      pause_time: pauseTime,
+      total_hours: totalHours,
+      date: selectedDate,
+    };
+  
+    try {
+      await axios.put('http://localhost:3000/api/cours_hours', courseData, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      
+      // Show success alert after course is updated
+      alert('Le cours a été terminé et mis à jour avec succès!');
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du cours:', error);
+      setError('Erreur lors de la mise à jour du cours');
     }
   };
+
+  
   
   // Formater le temps en heures:minutes:secondes
   const formatTime = (timeInSeconds) => {
