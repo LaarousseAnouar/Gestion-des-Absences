@@ -6,6 +6,7 @@ import "react-datepicker/dist/react-datepicker.css";  // Importer le style du ca
 
 const DashboardDirectionPedagogique = () => {
   const today = new Date().toISOString().split('T')[0];  // Date d'aujourd'hui
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);  // Default to today's date
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTab, setSelectedTab] = useState("Employee");
@@ -14,7 +15,7 @@ const DashboardDirectionPedagogique = () => {
   const [groups, setGroups] = useState([]);  // Liste des groupes
   const [selectedFormation, setSelectedFormation] = useState("");  // Formation sélectionnée
   const [selectedGroup, setSelectedGroup] = useState("");  // Groupe sélectionné
-  const [selectedDate, setSelectedDate] = useState(today);
+ // const [selectedDate, setSelectedDate] = useState(today);
   const [attendanceData, setAttendanceData] = useState({});
   const [showCalendar, setShowCalendar] = useState(false); // Etat pour afficher/masquer le calendrier
 
@@ -30,6 +31,7 @@ const DashboardDirectionPedagogique = () => {
   const [image, setImage] = useState(null); // Image de l'employé ou étudiant
   const [userType, setUserType] = useState("employee");  // Type d'utilisateur (employé ou étudiant)
 
+  const [students, setStudents] = useState([]);
   const isEtudiant = selectedTab === "Etudiant";
 
   // Fetch Employees or Students based on selected tab
@@ -81,6 +83,22 @@ const DashboardDirectionPedagogique = () => {
   }, [selectedFormation]);
 
 
+  useEffect(() => {
+    const fetchAttendanceStatus = async () => {
+      const dataToFetch = selectedTab === "Etudiant" ? students : employees;
+      const statusData = {}; 
+
+      for (const person of dataToFetch) {
+        const status = await fetchAttendanceStatusFromApi(person.id, selectedDate, selectedTab.toLowerCase());
+        statusData[person.id] = status;
+      }
+
+      setAttendanceData(statusData);  // Update the state with the status data
+    };
+
+    fetchAttendanceStatus();
+  }, [selectedDate, selectedTab]);  // Re-fetch when either the selectedDate or selectedTab changes
+
   const handleDateChange = (e) => {
     setSelectedDate(e.target.value);
   };
@@ -103,27 +121,26 @@ const DashboardDirectionPedagogique = () => {
   const fetchAttendanceStatusFromApi = async (id, date, type) => {
     try {
       const res = await axios.get(`http://localhost:3000/api/attendance?date=${date}&id=${id}&type=${type}`);
-      console.log("Attendance status response:", res.data);  // This logs the response object
-      
-      // Ensure that you return the 'status' directly (string value)
-      return res.data.status || "Aucune présence";  // Correctly access the 'status' property
+      return res.data.status || "Aucune présence";
     } catch (err) {
       console.error("Erreur lors de la récupération du statut de présence :", err);
-      return "Erreur de récupération";  // Return a fallback in case of error
+      return "Erreur de récupération";
     }
   };
   
   // Fetch attendance status
   const fetchAttendanceStatus = async (data) => {
     const statusData = {};  // This will store the status for each employee/student
-    const today = new Date().toISOString().split('T')[0];  // Get today's date
+    
+    // Ensure 'selectedDate' has a value, and fallback to today's date if needed
+    const dateToUse = selectedDate || new Date().toISOString().split('T')[0];  // Default to today if not set
   
     for (const emp of data) {
       // Use selectedTab to determine if we are fetching for employees or students
       const type = selectedTab.toLowerCase() === "employee" ? "employee" : "student";
       
       // Fetch the attendance status for the specific employee/student
-      const status = await fetchAttendanceStatusFromApi(emp.id, today, type);
+      const status = await fetchAttendanceStatusFromApi(emp.id, dateToUse, type);
       statusData[emp.id] = status;  // Store the status directly as a string value
     }
   
@@ -198,11 +215,11 @@ const DashboardDirectionPedagogique = () => {
                 <div className="flex items-center gap-2">
                   <i className="fas fa-calendar-alt text-2xl text-[#2B3A67]"></i>
                   <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={handleDateChange}
-                    className="p-2 border rounded-md"
-                  />
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}  // Set the selected date
+                  className="p-2 border rounded-md"
+                />
                 </div>
               </div>
             </div>
@@ -235,7 +252,7 @@ const DashboardDirectionPedagogique = () => {
   <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[emp.id])}`}>
     {attendanceData[emp.id] === "present" ? "Présent" : 
      attendanceData[emp.id] === "absent" ? "Absent" : 
-     attendanceData[emp.id] === undefined ? "Aucune présence" : "Erreur"}
+     attendanceData[emp.id] === undefined ? "Aucune présence" : "Aucune présence"}
   </span>
 </td>
 
@@ -334,7 +351,7 @@ const DashboardDirectionPedagogique = () => {
   <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[student.id])}`}>
     {attendanceData[student.id] === "present" ? "Présent" : 
      attendanceData[student.id] === "absent" ? "Absent" : 
-     attendanceData[student.id] === undefined ? "Aucune présence" : "Erreur"}
+     attendanceData[student.id] === undefined ? "Aucune présence" : "Aucune présence"}
   </span>
 </td>
 

@@ -55,7 +55,7 @@ CREATE TABLE students (
     telephone VARCHAR(20),
     date_naissance DATE,
     groupe_id INT REFERENCES groupes(id) ON DELETE SET NULL,
-    status VARCHAR(50), --  ca pour active ou not active pas le status de absence 
+    status VARCHAR(50), --  ca pour active ou bloque(bloque pour les etudiant a terminer leur formation)
     image_student BYTEA,  
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
