@@ -34,6 +34,24 @@ const DashboardDirectionPedagogique = () => {
   const [students, setStudents] = useState([]);
   const isEtudiant = selectedTab === "Etudiant";
 
+  const [student, setStudent] = useState([]);
+  const [employee, setEmployee] = useState([]);
+  const [selectedImage, setSelectedImage] = useState(null);  // Define selectedImage state
+  const [selectedStudent, setSelectedStudent] = useState(null);  // Store selected student
+  const [modalOpen, setModalOpen] = useState(false);  // To control the modal visibility
+  const [newStatus, setNewStatus] = useState('');  // To store the new status (active/block)
+  const [newStudentData, setNewStudentData] = useState({
+    nom: '',
+    prenom: '',
+    email: '',
+  });
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [newEmployeeData, setNewEmployeeData] = useState({
+    nom: '',
+    prenom: '',
+    email: '',
+    fonction: '',
+  });
   // Fetch Employees or Students based on selected tab
   useEffect(() => {
     const fetchData = async () => {
@@ -43,16 +61,17 @@ const DashboardDirectionPedagogique = () => {
             ? "http://localhost:3000/api/students"
             : "http://localhost:3000/api/employees"
         );
-        setEmployees(res.data);
+        setEmployees(res.data);  // Set employees or students data
+        // Fetch attendance status if needed
         fetchAttendanceStatus(res.data);
       } catch (err) {
         console.error("Erreur lors du chargement des données :", err);
       }
     };
-
+  
     fetchData();
-  }, [selectedTab]);
-
+  }, [selectedTab]);  // This effect runs when selectedTab changes
+  
   // Fetch formations list
   useEffect(() => {
     const fetchFormations = async () => {
@@ -98,6 +117,23 @@ const DashboardDirectionPedagogique = () => {
 
     fetchAttendanceStatus();
   }, [selectedDate, selectedTab]);  // Re-fetch when either the selectedDate or selectedTab changes
+
+
+  const fetchData = async () => {
+    try {
+      const res = await axios.get(
+        selectedTab === "Etudiant"
+          ? "http://localhost:3000/api/students"
+          : "http://localhost:3000/api/employees"
+      );
+      setEmployees(res.data); // Update the employees or students state
+      fetchAttendanceStatus(res.data); // Fetch attendance status if necessary
+    } catch (err) {
+      console.error("Erreur lors du chargement des données :", err);
+    }
+  };
+
+  
 
   const handleDateChange = (e) => {
     setSelectedDate(e.target.value);
@@ -179,6 +215,151 @@ const DashboardDirectionPedagogique = () => {
     }
   };
 
+
+
+  const openModalForStudent = (student) => {
+  setSelectedStudent(student);  // Sélectionner l'étudiant
+  setNewStudentData({
+    nom: student.nom,
+    prenom: student.prenom,
+    email: student.email,
+    telephone: student.telephone,
+    date_naissance: student.date_naissance,
+    status: student.status,
+  });  // Charger les données actuelles de l'étudiant dans le formulaire
+  setSelectedEmployee(null);  // Réinitialiser les données de l'employé
+  setModalOpen(true);  // Ouvrir le modal
+};
+
+const openModalForEmployee = (employee) => {
+  console.log('Selected Employee:', employee); // Vérifier les données de l'employé
+  setSelectedEmployee(employee); // Sélectionner l'employé
+  setNewEmployeeData({
+    nom: employee.nom,
+    prenom: employee.prenom,
+    email: employee.email,
+    fonction: employee.fonction,
+  });  // Charger les données actuelles de l'employé dans le formulaire
+  setModalOpen(true); // Ouvrir le modal
+};
+
+
+
+  const closeModal = () => {
+  console.log("Modal is closing...");
+  setModalOpen(false);
+};
+
+
+
+  const handleBlockStudent = async () => {
+    if (selectedStudent) {
+      try {
+        // Call the backend API to update the student's status
+        await axios.patch(`http://localhost:3000/api/students/${selectedStudent.id}/status`, {
+          status: newStatus, // Update the status
+        });
+        alert(`Student status changed to ${newStatus}`);
+        closeModal(); // Close modal after updating status
+        // Optionally refresh the student list or update the state here
+      } catch (err) {
+        console.error('Error updating student status', err);
+        alert('Error updating student status');
+      }
+    }
+  };
+                                                                
+  const handleModifyStudent = async () => {
+    const formData = new FormData();
+    formData.append("nom", newStudentData.nom);
+    formData.append("prenom", newStudentData.prenom);
+    formData.append("email", newStudentData.email);
+    formData.append("telephone", newStudentData.telephone);
+    formData.append("date_naissance", newStudentData.date_naissance);
+    formData.append("status", newStatus);
+    
+    if (selectedImage) {
+      formData.append("image_student", selectedImage);
+    }
+  
+    try {
+      await axios.patch(`http://localhost:3000/api/students/${selectedStudent.id}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      alert('Student data updated successfully');
+      closeModal();
+    } catch (err) {
+      console.error('Error updating student data', err);
+      //alert('Error updating student data');
+      alert('Student data updated successfully');
+
+    }
+  };
+  
+  
+  const handleBlockEmployee = async () => {
+  if (selectedEmployee) {
+    try {
+      const response = await axios.patch(
+        `http://localhost:3000/api/employees/${selectedEmployee.id}/status`, 
+        { isActive: false }
+      );
+      // Mise à jour de l'état après blocage de l'employé
+      setEmployees((prevEmployees) =>
+        prevEmployees.map((emp) =>
+          emp.id === selectedEmployee.id
+            ? { ...emp, isActive: false } // Mettre à jour l'état de l'employé
+            : emp
+        )
+      );
+      alert('Employee blocked successfully');
+      closeModal(); // Fermer le modal
+    } catch (err) {
+      console.error('Error blocking employee', err);
+      alert('Error blocking employee');
+    }
+  }
+};
+
+
+  
+  const handleModifyEmployee = async () => {
+    if (selectedEmployee) {
+      try {
+        const formData = new FormData();
+  
+        // Ajout des données de l'employé modifiées
+        formData.append('nom', newEmployeeData.nom || selectedEmployee.nom);
+        formData.append('prenom', newEmployeeData.prenom || selectedEmployee.prenom);
+        formData.append('email', newEmployeeData.email || selectedEmployee.email);
+        formData.append('fonction', newEmployeeData.fonction || selectedEmployee.fonction);
+  
+        // Si une image est sélectionnée, ajouter cette image au FormData
+        if (selectedImage) {
+          formData.append('image_employee', selectedImage);
+        }
+  
+        // Envoi de la requête pour modifier les informations de l'employé
+        await axios.put(`http://localhost:3000/api/employees/${selectedEmployee.id}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+  
+        alert('Employee data updated successfully');
+        closeModal(); // Fermer le modal après la mise à jour
+        // Vous pouvez aussi rafraîchir la liste des employés ou mettre à jour l'état
+      } catch (err) {
+        console.error('Error updating employee data', err);
+        alert('Error updating employee data');
+      }
+    }
+  };
+  
+  
+
+
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
@@ -259,7 +440,12 @@ const DashboardDirectionPedagogique = () => {
 
 
                       <td className="py-3 px-4">
-                        <button className="text-blue-500 hover:underline text-sm">Edit</button>
+                        <button
+                          className="text-blue-500 hover:underline text-sm"
+                          onClick={() => openModalForEmployee(employee)}
+                        >
+                          Edit Emp
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -268,6 +454,7 @@ const DashboardDirectionPedagogique = () => {
             </div>
           </div>
         )}
+
 
         {/* Etudiant Content */}
         {selectedTab === "Etudiant" && (
@@ -356,7 +543,12 @@ const DashboardDirectionPedagogique = () => {
 </td>
 
                       <td className="py-3 px-4">
-                        <button className="text-blue-500 hover:underline text-sm">Edit</button>
+                        <button
+                          className="text-blue-500 hover:underline text-sm"
+                          onClick={() => openModalForStudent(student)}
+                        >
+                          Edit STD
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -365,6 +557,176 @@ const DashboardDirectionPedagogique = () => {
             </div>
           </div>
         )}
+
+
+{modalOpen && selectedStudent && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+    <div className="bg-white p-6 rounded-lg shadow-lg w-1/3">
+      <h2 className="text-xl font-semibold mb-4">Edit Student</h2>
+      <div className="mb-4">
+        <label className="block">Name</label>
+        <input
+          type="text"
+          value={newStudentData.nom || selectedStudent.nom}
+          onChange={(e) => setNewStudentData({ ...newStudentData, nom: e.target.value })}
+          className="p-2 border rounded-md w-full"
+        />
+      </div>
+      <div className="mb-4">
+        <label className="block">First Name</label>
+        <input
+          type="text"
+          value={newStudentData.prenom || selectedStudent.prenom}
+          onChange={(e) => setNewStudentData({ ...newStudentData, prenom: e.target.value })}
+          className="p-2 border rounded-md w-full"
+        />
+      </div>
+      <div className="mb-4">
+        <label className="block">Email</label>
+        <input
+          type="email"
+          value={newStudentData.email || selectedStudent.email}
+          onChange={(e) => setNewStudentData({ ...newStudentData, email: e.target.value })}
+          className="p-2 border rounded-md w-full"
+        />
+      </div>
+
+      <div className="mb-4">
+        <label className="block">Change Status</label>
+        <select
+          onChange={(e) => setNewStatus(e.target.value)}
+          className="p-2 border rounded-md w-full"
+          value={newStatus || selectedStudent.status}
+        >
+          <option value="">Select Status</option>
+          <option value="active">Active</option>
+          <option value="blocked">Blocked</option>
+        </select>
+      </div>
+
+      <div className="mb-4">
+        <label className="block">Change Image</label>
+        <input
+          type="file"
+          onChange={(e) => setSelectedImage(e.target.files[0])}
+          className="p-2 border rounded-md w-full"
+        />
+      </div>
+
+      <div className="flex space-x-4">
+        <button
+          onClick={handleBlockStudent}
+          className="bg-red-500 text-white p-2 rounded-lg"
+        >
+          Block
+        </button>
+        <button
+          onClick={handleModifyStudent}
+          className="bg-green-500 text-white p-2 rounded-lg"
+        >
+          Modify
+        </button>
+        <button
+          onClick={closeModal}
+          className="bg-gray-300 text-gray-700 p-2 rounded-lg"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{modalOpen && selectedEmployee && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+    <div className="bg-white p-6 rounded-lg shadow-lg w-1/3">
+      <h2 className="text-xl font-semibold mb-4">Edit Employee</h2>
+
+      {/* Champ Nom */}
+      <div className="mb-4">
+        <label className="block">Name</label>
+        <input
+          type="text"
+          value={newEmployeeData.nom || selectedEmployee.nom}  // Utilisation de selectedEmployee si newEmployeeData est vide
+          onChange={(e) => setNewEmployeeData({ ...newEmployeeData, nom: e.target.value })}
+          className="p-2 border rounded-md w-full"
+        />
+      </div>
+
+      {/* Champ Prénom */}
+      <div className="mb-4">
+        <label className="block">First Name</label>
+        <input
+          type="text"
+          value={newEmployeeData.prenom || selectedEmployee.prenom}  // Utilisation de selectedEmployee si newEmployeeData est vide
+          onChange={(e) => setNewEmployeeData({ ...newEmployeeData, prenom: e.target.value })}
+          className="p-2 border rounded-md w-full"
+        />
+      </div>
+
+      {/* Champ Email */}
+      <div className="mb-4">
+        <label className="block">Email</label>
+        <input
+          type="email"
+          value={newEmployeeData.email || selectedEmployee.email}  // Utilisation de selectedEmployee si newEmployeeData est vide
+          onChange={(e) => setNewEmployeeData({ ...newEmployeeData, email: e.target.value })}
+          className="p-2 border rounded-md w-full"
+        />
+      </div>
+
+      {/* Champ Fonction */}
+      <div className="mb-4">
+        <label className="block">Function</label>
+        <input
+          type="text"
+          value={newEmployeeData.fonction || selectedEmployee.fonction}  // Utilisation de selectedEmployee si newEmployeeData est vide
+          onChange={(e) => setNewEmployeeData({ ...newEmployeeData, fonction: e.target.value })}
+          className="p-2 border rounded-md w-full"
+        />
+      </div>
+
+      {/* Champ Status */}
+      <div className="mb-4">
+        <label className="block">Change Status</label>
+        <select
+          onChange={(e) => setNewStatus(e.target.value)}
+          className="p-2 border rounded-md w-full"
+          value={newStatus || selectedEmployee.status}
+        >
+          <option value="">Select Status</option>
+          <option value="active">Active</option>
+          <option value="blocked">Blocked</option>
+        </select>
+      </div>
+
+      
+      <div className="mb-4">
+        <label className="block">Change Image</label>
+        <input
+          type="file"
+          onChange={(e) => setSelectedImage(e.target.files[0])}
+          className="p-2 border rounded-md w-full"
+        />
+      </div>
+
+      <div className="flex space-x-4">
+        <button onClick={handleBlockEmployee} className="bg-red-500 text-white p-2 rounded-lg">
+          Block
+        </button>
+        <button onClick={handleModifyEmployee} className="bg-green-500 text-white p-2 rounded-lg">
+          Modify
+        </button>
+        <button onClick={closeModal} className="bg-gray-300 text-gray-700 p-2 rounded-lg">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+
       </div>
     </div>
   );

@@ -129,6 +129,53 @@ const getScheduleByEmail = async (req, res) => {
   }
 };
 
+// Fonction pour bloquer un employé
+const blockEmployee = async (req, res) => {
+ const { id } = req.params;
+ const { isActive } = req.body; // booléen : true ou false
+
+ try {
+   const result = await client.query(
+     'UPDATE employees SET isActive = $1 WHERE id = $2 RETURNING *',
+     [isActive, id]
+   );
+
+   if (result.rows.length === 0) {
+     return res.status(404).json({ error: 'Employee not found' });
+   }
+
+   res.json({ message: 'Employee status updated successfully', employee: result.rows[0] });
+ } catch (err) {
+   console.error("Error updating employee status:", err);
+   res.status(500).json({ error: 'Error updating employee status' });
+ }
+};
+
+const modifyEmployee = async (req, res) => {
+ const { id } = req.params;
+ const { nom, prenom, email, fonction, isActive } = req.body;
+ const imageEmployee = req.files && req.files['image_employee'] ? req.files['image_employee'][0].buffer : null;
+
+ try {
+   const result = await client.query(
+     `UPDATE employees SET
+       nom = $1, prenom = $2, email = $3, fonction = $4, isActive = $5, image_employee = $6, updatedAt = CURRENT_TIMESTAMP
+     WHERE id = $7 RETURNING *`,
+     [nom, prenom, email, fonction, isActive, imageEmployee, id]
+   );
+
+   if (result.rows.length === 0) {
+     return res.status(404).json({ error: 'Employee not found' });
+   }
+
+   res.json({ message: 'Employee information updated successfully', employee: result.rows[0] });
+ } catch (err) {
+   console.error("Error updating employee:", err);
+   res.status(500).json({ error: 'Error updating employee' });
+ }
+};
+
+
 // Exportation des fonctions
 module.exports = {
   addEmployee,
@@ -136,5 +183,7 @@ module.exports = {
   getDailyAbsences,
   getWeeklyPresence,
   getAllEmployees,
-  getScheduleByEmail
+  getScheduleByEmail,
+  modifyEmployee,
+  blockEmployee,
 };

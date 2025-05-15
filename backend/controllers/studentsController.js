@@ -29,6 +29,7 @@ const addStudent = async (req, res) => {
 // Fonction pour récupérer tous les étudiants
 const getAllStudents = async (req, res) => {
   try {
+    // Update the query to only select active students
     const result = await client.query(`
       SELECT 
         s.id, s.nom, s.prenom, s.email, s.status, s.image_student, 
@@ -37,6 +38,7 @@ const getAllStudents = async (req, res) => {
       FROM students s
       LEFT JOIN groupes g ON s.groupe_id = g.id
       LEFT JOIN formations f ON g.formation_id = f.id
+      WHERE s.status = 'active'  -- Only fetch active students
       ORDER BY s.created_at DESC
     `);
 
@@ -48,18 +50,75 @@ const getAllStudents = async (req, res) => {
       formation: st.formation
     }));
 
-    res.json(students);
+    res.json(students);  // Return the list of active students
   } catch (err) {
     console.error("Erreur dans getAllStudents :", err);
     res.status(500).json({ error: "Erreur lors de la récupération des étudiants." });
   }
 };
 
+const blockStudent = async (req, res) => {
+  const { id } = req.params;  // Récupérer l'id de l'étudiant
+  const { status } = req.body;  // Le statut envoyé (ici, on va le définir sur 'bloqué')
 
+  if (status !== 'blocked') {
+    return res.status(400).json({ error: 'Le statut doit être "blocked"' });
+  }
 
+  try {
+    const result = await client.query(
+      'UPDATE students SET status = $1 WHERE id = $2 RETURNING *',
+      [status, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Étudiant non trouvé' });
+    }
+
+    res.json({ message: 'Étudiant bloqué avec succès', student: result.rows[0] });
+  } catch (err) {
+    console.error("Erreur lors du blocage de l'étudiant :", err);
+    res.status(500).json({ error: "Erreur lors du blocage de l'étudiant." });
+  }
+};
+
+// Modifier les informations d'un étudiant
+const modifyStudent = async (req, res) => {
+  const { id } = req.params;
+  const { nom, prenom, email, telephone, date_naissance } = req.body;
+  const imageStudent = req.file ? req.file.buffer : null;  // If an image is provided
+
+  if (!nom || !prenom || !email) {
+    return res.status(400).json({ error: 'Nom, prénom, et email sont requis' });
+  }
+
+  try {
+    // Update the student's details, including image if provided
+    const result = await client.query(
+      `UPDATE students SET 
+        nom = $1, prenom = $2, email = $3, telephone = $4, 
+        date_naissance = $5, image_student = $6, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $7 RETURNING *`,
+      [
+        nom, prenom, email, telephone, date_naissance, imageStudent, id
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Étudiant non trouvé' });
+    }
+
+    res.json({ message: 'Informations de l\'étudiant mises à jour avec succès', student: result.rows[0] });
+  } catch (err) {
+    console.error('Erreur lors de la modification de l\'étudiant :', err);
+    res.status(500).json({ error: 'Erreur lors de la modification de l\'étudiant.' });
+  }
+};
 
 
 module.exports = {
   addStudent,
   getAllStudents,
+  blockStudent,
+  modifyStudent,
 };
