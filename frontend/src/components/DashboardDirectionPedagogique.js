@@ -103,21 +103,33 @@ const DashboardDirectionPedagogique = () => {
 
 
   useEffect(() => {
-    const fetchAttendanceStatus = async () => {
-      const dataToFetch = selectedTab === "Etudiant" ? students : employees;
-      const statusData = {}; 
+  const fetchAttendanceStatus = async () => {
+    const dataToFetch = selectedTab === "Etudiant" ? students : employees;
+    const statusData = {};
 
-      for (const person of dataToFetch) {
-        const status = await fetchAttendanceStatusFromApi(person.id, selectedDate, selectedTab.toLowerCase());
-        statusData[person.id] = status;
-      }
+    for (const person of dataToFetch) {
+      const type = selectedTab.toLowerCase(); // "etudiant" ou "employee"
+      
+      // Récupérer le statut matin
+      const statusMatin = await fetchAttendanceStatusFromApi(person.id, selectedDate, type, 'matin');
+      // Récupérer le statut soir
+      const statusSoir = await fetchAttendanceStatusFromApi(person.id, selectedDate, type, 'soir');
 
-      setAttendanceData(statusData);  // Update the state with the status data
-    };
+      statusData[person.id] = {
+        matin: statusMatin,
+        soir: statusSoir,
+      };
+    }
 
+    setAttendanceData(statusData);
+  };
+
+  if (selectedDate && selectedTab) {
     fetchAttendanceStatus();
-  }, [selectedDate, selectedTab]);  // Re-fetch when either the selectedDate or selectedTab changes
+  }
+}, [selectedDate, selectedTab, students, employees]);
 
+  const capitalize = (str) => str && str.charAt(0).toUpperCase() + str.slice(1);
 
   const fetchData = async () => {
     try {
@@ -154,36 +166,42 @@ const DashboardDirectionPedagogique = () => {
 
 
   // Fetch attendance status for a specific employee/student
-  const fetchAttendanceStatusFromApi = async (id, date, type) => {
-    try {
-      const res = await axios.get(`http://localhost:3000/api/attendance?date=${date}&id=${id}&type=${type}`);
-      return res.data.status || "Aucune présence";
-    } catch (err) {
-      console.error("Erreur lors de la récupération du statut de présence :", err);
-      return "Erreur de récupération";
-    }
-  };
-  
-  // Fetch attendance status
-  const fetchAttendanceStatus = async (data) => {
-    const statusData = {};  // This will store the status for each employee/student
-    
-    // Ensure 'selectedDate' has a value, and fallback to today's date if needed
-    const dateToUse = selectedDate || new Date().toISOString().split('T')[0];  // Default to today if not set
-  
-    for (const emp of data) {
-      // Use selectedTab to determine if we are fetching for employees or students
-      const type = selectedTab.toLowerCase() === "employee" ? "employee" : "student";
-      
-      // Fetch the attendance status for the specific employee/student
-      const status = await fetchAttendanceStatusFromApi(emp.id, dateToUse, type);
-      statusData[emp.id] = status;  // Store the status directly as a string value
-    }
-  
-    console.log("Updated statusData:", statusData);  // Check the updated statusData object
-    setAttendanceData(statusData);  // Update the state with the status data
-  };
-  
+  const fetchAttendanceStatusFromApi = async (id, date, type, session) => {
+  try {
+    const res = await axios.get(`http://localhost:3000/api/attendance`, {
+      params: { id, date, type, session }
+    });
+    return res.data.status || "Aucune présence";
+  } catch (err) {
+    console.error(`Erreur lors de la récupération du statut de présence (${session}):`, err);
+    return "aucun presence";
+  }
+};
+
+// Exemple de fetch qui récupère matin et soir pour chaque personne
+const fetchAttendanceStatus = async (data) => {
+  const statusData = {};  // stockera : { id: { matin: status, soir: status } }
+
+  const dateToUse = selectedDate || new Date().toISOString().split('T')[0];
+
+  for (const emp of data) {
+    const type = selectedTab.toLowerCase() === "employee" ? "employee" : "student";
+
+    // Récupérer le statut matin
+    const statusMatin = await fetchAttendanceStatusFromApi(emp.id, dateToUse, type, 'matin');
+    // Récupérer le statut soir
+    const statusSoir = await fetchAttendanceStatusFromApi(emp.id, dateToUse, type, 'soir');
+
+    statusData[emp.id] = {
+      matin: statusMatin,
+      soir: statusSoir,
+    };
+  }
+
+  console.log("Updated statusData:", statusData);
+  setAttendanceData(statusData);
+};
+
   
 
   const getStatusColor = (status) => {
@@ -355,11 +373,9 @@ const openModalForEmployee = (employee) => {
       }
     }
   };
+
+
   
-  
-
-
-
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
@@ -430,12 +446,16 @@ const openModalForEmployee = (employee) => {
                       <td className="py-3 px-4 text-sm text-gray-700">{emp.fonction}</td>
                       <td className="py-3 px-4 text-sm text-gray-700">{selectedDate}</td>
                       <td className="py-3 px-4 text-sm text-gray-700">
-  <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[emp.id])}`}>
-    {attendanceData[emp.id] === "present" ? "Présent" : 
-     attendanceData[emp.id] === "absent" ? "Absent" : 
-     attendanceData[emp.id] === undefined ? "Aucune présence" : "Aucune présence"}
-  </span>
+  <div className="flex flex-col space-y-1">
+    <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[emp.id]?.matin)}`}>
+      Matin : {attendanceData[emp.id]?.matin ? capitalize(attendanceData[emp.id].matin) : "Aucune présence"}
+    </span>
+    <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[emp.id]?.soir)}`}>
+      Soir : {attendanceData[emp.id]?.soir ? capitalize(attendanceData[emp.id].soir) : "Aucune présence"}
+    </span>
+  </div>
 </td>
+
 
 
 
@@ -535,12 +555,16 @@ const openModalForEmployee = (employee) => {
                       <td className="py-3 px-4 text-sm text-gray-700">{student.groupe}</td>
                       <td className="py-3 px-4 text-sm text-gray-700">{selectedDate || today}</td>
                       <td className="py-3 px-4 text-sm text-gray-700">
-  <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[student.id])}`}>
-    {attendanceData[student.id] === "present" ? "Présent" : 
-     attendanceData[student.id] === "absent" ? "Absent" : 
-     attendanceData[student.id] === undefined ? "Aucune présence" : "Aucune présence"}
-  </span>
+  <div className="flex flex-col space-y-1">
+    <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[student.id]?.matin)}`}>
+      Matin : {attendanceData[student.id]?.matin ? capitalize(attendanceData[student.id].matin) : "Aucune présence"}
+    </span>
+    <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[student.id]?.soir)}`}>
+      Soir : {attendanceData[student.id]?.soir ? capitalize(attendanceData[student.id].soir) : "Aucune présence"}
+    </span>
+  </div>
 </td>
+
 
                       <td className="py-3 px-4">
                         <button

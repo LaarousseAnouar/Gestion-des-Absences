@@ -115,4 +115,10 @@ Rhita@iteip.com ,
 
 
 
-        
+ALTER TABLE attendance_students ALTER COLUMN date TYPE TIMESTAMP;
+ALTER TABLE attendance_employees ALTER COLUMN date TYPE TIMESTAMP;
+
+ // et pour inverce :
+
+ALTER TABLE attendance_students ALTER COLUMN date TYPE DATE USING date::DATE;
+ALTER TABLE attendance_employees ALTER COLUMN date TYPE DATE USING date::DATE;
