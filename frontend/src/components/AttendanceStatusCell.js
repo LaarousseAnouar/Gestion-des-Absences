@@ -1,72 +1,61 @@
-// import React, { useState } from "react";
-// import axios from "axios";
+import React, { useState } from "react";
+import axios from "axios";
 
-// const statusOptions = ["présent", "absent"];
+const capitalize = (str) => str && str.charAt(0).toUpperCase() + str.slice(1);
 
-// const capitalize = (str) => str && str.charAt(0).toUpperCase() + str.slice(1);
+const AttendanceStatusCell = ({ id, session, currentStatus, date, type, onUpdate }) => {
+  const [editing, setEditing] = React.useState(false);
+  const [newStatus, setNewStatus] = React.useState(currentStatus || "");
 
-// const getStatusColor = (status) => {
-//     if (status === "present") {
-//       return "bg-green-500 text-white";  // Green for 'present'
-//     }
-//     if (status === "absent") {
-//       return "bg-red-500 text-white";  // Red for 'absent'
-//     }
-//     return "bg-gray-300 text-gray-700";  // Default gray for other statuses
-//   };
+  const handleChange = async (e) => {
+    const selectedStatus = e.target.value;
+    setNewStatus(selectedStatus);
 
-// const AttendanceStatusCell = ({ id, session, currentStatus, date, type, onUpdate, className }) => {
-//   const [editing, setEditing] = useState(false);
-//   const [newStatus, setNewStatus] = useState(currentStatus || "");
+    try {
+      // Mise à jour du statut dans la base de données
+      await axios.patch("http://localhost:3000/api/attendance", {
+        id,
+        date,
+        type,
+        session,
+        status: selectedStatus,
+      });
 
-//   const handleChange = async (e) => {
-//     const selectedStatus = e.target.value;
-//     setNewStatus(selectedStatus);
+      // Appelle la fonction onUpdate pour informer le parent
+      if (typeof onUpdate === "function") {
+        onUpdate(id, session, selectedStatus);  // Mise à jour du seul statut modifié
+      }
+      setEditing(false);
+    } catch (err) {
+      console.error("Erreur lors de la mise à jour du statut :", err);
+      alert("Erreur lors de la mise à jour. Veuillez réessayer.");
+    }
+  };
 
-//     try {
-//       await axios.patch("http://localhost:3000/api/attendance", {
-//         id,
-//         date,
-//         type,
-//         session,
-//         status: selectedStatus,
-//       });
-//       onUpdate(id, session, selectedStatus);
-//       setEditing(false);
-//     } catch (err) {
-//       console.error("Erreur lors de la mise à jour du statut :", err);
-//       alert("Erreur lors de la mise à jour. Veuillez réessayer.");
-//     }
-//   };
-
-//   return (
-//     <>
-//       {editing ? (
-//         <select
-//           value={newStatus}
-//           onChange={handleChange}
-//           onBlur={() => setEditing(false)}
-//           autoFocus
-//           className={className}
-//         >
-//           {["présent", "absent", "absent justifié"].map((status) => (
-//             <option key={status} value={status}>
-//               {capitalize(status)}
-//             </option>
-//           ))}
-//         </select>
-//       ) : (
-//         <span
-//           className={`${className} cursor-pointer`}
-//           onClick={() => setEditing(true)}
-//           title="Cliquez pour modifier"
-//         >
-//           {capitalize(newStatus) || "Aucune présence"}
-//         </span>
-//       )}
-//     </>
-//   );
-// };
+  return editing ? (
+    <select
+      value={newStatus}
+      onChange={handleChange}
+      onBlur={() => setEditing(false)}
+      autoFocus
+      className="rounded px-1 text-sm bg-white text-gray-900 border border-gray-300"
+    >
+      {["present", "absent"].map(status => (
+        <option key={status} value={status}>
+          {status.charAt(0).toUpperCase() + status.slice(1)}
+        </option>
+      ))}
+    </select>
+  ) : (
+    <span
+      className="cursor-pointer"
+      onClick={() => setEditing(true)}
+      title="Cliquez pour modifier"
+    >
+      {newStatus.charAt(0).toUpperCase() + newStatus.slice(1) || "Aucune présence"}
+    </span>
+  );
+};
 
 
-// export default AttendanceStatusCell;
+export default AttendanceStatusCell;

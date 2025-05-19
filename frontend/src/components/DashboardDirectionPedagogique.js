@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";  // Importer le style du calendrier
+import AttendanceStatusCell from "./AttendanceStatusCell"; // Chemin selon ton organisation
 
 const DashboardDirectionPedagogique = () => {
   const today = new Date().toISOString().split('T')[0];  // Date d'aujourd'hui
@@ -52,6 +53,8 @@ const DashboardDirectionPedagogique = () => {
     email: '',
     fonction: '',
   });
+
+  
   // Fetch Employees or Students based on selected tab
   useEffect(() => {
     const fetchData = async () => {
@@ -101,6 +104,9 @@ const DashboardDirectionPedagogique = () => {
     }
   }, [selectedFormation]);
 
+  useEffect(() => {
+  setAttendanceData({});
+}, [selectedTab]);
 
   useEffect(() => {
   const fetchAttendanceStatus = async () => {
@@ -108,11 +114,9 @@ const DashboardDirectionPedagogique = () => {
     const statusData = {};
 
     for (const person of dataToFetch) {
-      const type = selectedTab.toLowerCase(); // "etudiant" ou "employee"
-      
-      // Récupérer le statut matin
+      const type = selectedTab.toLowerCase() === "employee" ? "employee" : "student";
+
       const statusMatin = await fetchAttendanceStatusFromApi(person.id, selectedDate, type, 'matin');
-      // Récupérer le statut soir
       const statusSoir = await fetchAttendanceStatusFromApi(person.id, selectedDate, type, 'soir');
 
       statusData[person.id] = {
@@ -121,6 +125,7 @@ const DashboardDirectionPedagogique = () => {
       };
     }
 
+    // Remplace complètement l'ancien état
     setAttendanceData(statusData);
   };
 
@@ -202,17 +207,33 @@ const fetchAttendanceStatus = async (data) => {
   setAttendanceData(statusData);
 };
 
-  
+
+const onUpdate = (id, session, newStatus) => {
+  setAttendanceData(prev => ({
+    ...prev,
+    [id]: {
+      ...prev[id],
+      [session]: newStatus,
+    },
+  }));
+  fetchAttendanceStatus(); // Recharge les données fraîches du serveur
+};
 
   const getStatusColor = (status) => {
-    if (status === "present") {
-      return "bg-green-500 text-white";  // Green for 'present'
-    }
-    if (status === "absent") {
-      return "bg-red-500 text-white";  // Red for 'absent'
-    }
-    return "bg-gray-300 text-gray-700";  // Default gray for other statuses
-  };
+  if (!status) {  // si status est undefined, null, vide, etc.
+    return "bg-gray-300 text-gray-700";  // couleur par défaut
+  }
+  const normalizedStatus = status.trim().toLowerCase();
+  if (normalizedStatus === "present") {
+    return "bg-green-500 text-white";  // vert pour présent
+  }
+  if (normalizedStatus === "absent") {
+    return "bg-red-500 text-white";  // rouge pour absent
+  }
+  return "bg-gray-300 text-gray-700";  // gris par défaut
+};
+
+
 
   // Avatar component
   const Avatar = ({ name, photo }) => {
@@ -373,9 +394,9 @@ const openModalForEmployee = (employee) => {
       }
     }
   };
-
-
   
+  
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
@@ -448,15 +469,47 @@ const openModalForEmployee = (employee) => {
                       <td className="py-3 px-4 text-sm text-gray-700">
   <div className="flex flex-col space-y-1">
     <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[emp.id]?.matin)}`}>
-      Matin : {attendanceData[emp.id]?.matin ? capitalize(attendanceData[emp.id].matin) : "Aucune présence"}
+      Matin :{" "}
+      <AttendanceStatusCell
+        id={emp.id}
+        session="matin"
+        currentStatus={attendanceData[emp.id]?.matin}
+        date={selectedDate}
+        type="employee"
+        onUpdate={(id, session, newStatus) => {
+          setAttendanceData((prev) => ({
+            ...prev,
+            [id]: {
+              ...prev[id],
+              [session]: newStatus,
+            },
+          }));
+        }}
+        className=""
+      />
     </span>
     <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[emp.id]?.soir)}`}>
-      Soir : {attendanceData[emp.id]?.soir ? capitalize(attendanceData[emp.id].soir) : "Aucune présence"}
+      Soir :{" "}
+      <AttendanceStatusCell
+        id={emp.id}
+        session="soir"
+        currentStatus={attendanceData[emp.id]?.soir}
+        date={selectedDate}
+        type="employee"
+        onUpdate={(id, session, newStatus) => {
+          setAttendanceData((prev) => ({
+            ...prev,
+            [id]: {
+              ...prev[id],
+              [session]: newStatus,
+            },
+          }));
+        }}
+        className=""
+      />
     </span>
   </div>
 </td>
-
-
 
 
                       <td className="py-3 px-4">
@@ -554,17 +607,49 @@ const openModalForEmployee = (employee) => {
                       <td className="py-3 px-4 text-sm text-gray-700">{student.formation}</td>
                       <td className="py-3 px-4 text-sm text-gray-700">{student.groupe}</td>
                       <td className="py-3 px-4 text-sm text-gray-700">{selectedDate || today}</td>
-                      <td className="py-3 px-4 text-sm text-gray-700">
+
+ <td className="py-3 px-4 text-sm text-gray-700">
   <div className="flex flex-col space-y-1">
     <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[student.id]?.matin)}`}>
-      Matin : {attendanceData[student.id]?.matin ? capitalize(attendanceData[student.id].matin) : "Aucune présence"}
+      Matin :{" "}
+      <AttendanceStatusCell
+        id={student.id}
+        session="matin"
+        currentStatus={attendanceData[student.id]?.matin}
+        date={selectedDate}
+        type="student"
+        onUpdate={(id, session, newStatus) => {
+          setAttendanceData((prev) => ({
+            ...prev,
+            [id]: {
+              ...prev[id],
+              [session]: newStatus,
+            },
+          }));
+        }}
+      />
     </span>
     <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[student.id]?.soir)}`}>
-      Soir : {attendanceData[student.id]?.soir ? capitalize(attendanceData[student.id].soir) : "Aucune présence"}
+      Soir :{" "}
+      <AttendanceStatusCell
+        id={student.id}
+        session="soir"
+        currentStatus={attendanceData[student.id]?.soir}
+        date={selectedDate}
+        type="student"
+        onUpdate={(id, session, newStatus) => {
+          setAttendanceData((prev) => ({
+            ...prev,
+            [id]: {
+              ...prev[id],
+              [session]: newStatus,
+            },
+          }));
+        }}
+      />
     </span>
   </div>
 </td>
-
 
                       <td className="py-3 px-4">
                         <button
