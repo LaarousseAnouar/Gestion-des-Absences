@@ -36,6 +36,7 @@ const DashboardProf = () => {
   const [pauseTime, setPauseTime] = useState('00:10:00'); // Default pause time (you can adjust this based on your needs)
   const [totalHours, setTotalHours] = useState(0); // Initial total hours, will be calculated during the course
 
+  const [selectedSession, setSelectedSession] = useState('matin'); // valeur par défaut matin
 
   // Vérification si l'email est disponible
   if (!email) {
@@ -80,6 +81,14 @@ const DashboardProf = () => {
 
   //+}++++++}++}}}+}}}}++++++++++++++}}}}}+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++}
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);  // après 4 secondes, on arrête le loading
+    }, 4000); // 4000 ms = 4 secondes
+
+    return () => clearTimeout(timer); // nettoyage du timer si le composant est démonté
+  }, []);
+
+  useEffect(() => {
     fetchCourses();
   }, []);
   
@@ -103,29 +112,30 @@ const DashboardProf = () => {
   }, []);
 
   useEffect(() => {
-    students.forEach(student => {
-      axios.get(`http://localhost:3000/api/attendance?date=${selectedDate}&id=${student.id}&type=student`)
-        .then(response => {
-          // Vérifier si la réponse contient bien le champ 'status'
-          const status = response.data.status;
-          
-          // Si 'status' est défini et valide, on l'utilise. Sinon, on définit 'aucune-présence'.
-          setAttendance(prevState => ({
-            ...prevState,
-            [student.id]: status && (status === 'present' || status === 'absent') ? status : 'aucune-présence'
-          }));
-        })
-        .catch(error => {
-          console.error(`Erreur lors de la récupération de la présence pour l'étudiant ${student.id}:`, error);
-          // Si l'appel API échoue, définir 'aucune-présence'
-          setAttendance(prevState => ({
-            ...prevState,
-            [student.id]: 'aucune-présence'
-          }));
-        });
-    });
-  }, [selectedDate, students]);
-  
+  students.forEach(student => {
+    axios.get(`http://localhost:3000/api/attendance?date=${selectedDate}&id=${student.id}&type=student&session=${selectedSession}`)
+      .then(response => {
+        const status = response.data.status;
+        setAttendance(prev => ({
+          ...prev,
+          [student.id]: {
+            ...prev[student.id],
+            [selectedSession]: status && (status === 'present' || status === 'absent') ? status : 'aucune-présence'
+          }
+        }));
+      })
+      .catch(() => {
+        setAttendance(prev => ({
+          ...prev,
+          [student.id]: {
+            ...prev[student.id],
+            [selectedSession]: 'aucune-présence'
+          }
+        }));
+      });
+  });
+}, [selectedDate, students, selectedSession]);
+
 
   // Function to fetch courses
   const fetchCourses = async () => {
@@ -175,7 +185,12 @@ const DashboardProf = () => {
 //+}}++++++}++++++++}}}+}}}}}}}+}++++++++}}++++++++++++++++++++}}+++++}++++++++++++++++++++++++++++}}}}+}+}}}++++++++++++++++}}+++++++++++++++++
   // Affichage pendant le chargement
   if (isLoading) {
-    return <div>Chargement des données...</div>;
+    return (
+      <div className="loader-container">
+        <div className="spinner"></div>
+        <div>Chargement des données...</div>
+      </div>
+    );
   }
 
   // Affichage en cas d'erreur
@@ -292,19 +307,22 @@ const DashboardProf = () => {
   
   // +}+++++}+++}}}}}++}}}++}+}}}}+}}++++++}}++++++}}}}}}}+}}+}++++++++++++++}}+++++++}++++++++++++++++++++++++}
   const handleViewChange = (type) => {
-    if (view === type) {
-      setView('');
-    } else {
-      setView(type);
-    }
-  };
+  if (view === type) {
+    setView(''); // pour revenir à "total" si on reclique sur le même bouton
+  } else {
+    setView(type);
+  }
+};
 
-  // Filtrage des étudiants en fonction du statut
-  const filteredStudents = students.filter(student => {
-    if (view === 'present') return attendance[student.id] === 'present';
-    if (view === 'absent') return attendance[student.id] === 'absent';
-    return true; // Total, afficher tous les étudiants
-  });
+// Filtrage des étudiants en fonction du statut et de la session sélectionnée
+const filteredStudents = students.filter(student => {
+  const status = attendance[student.id]?.[selectedSession] || 'aucune-présence';
+
+  if (view === 'present') return status === 'present';
+  if (view === 'absent') return status === 'absent';
+  return true; // Total, afficher tous les étudiants
+});
+
 
   return (
     <div className="flex min-h-screen max-w-full rounded-tr-3xl border border-r-0 border-b-0 border-[#2B3A67] overflow-hidden">
@@ -529,11 +547,11 @@ const DashboardProf = () => {
     {/* Icone de filtre */}
     <div className="flex justify-between items-center mb-4">
       <h2 className="text-[#2B3A67] font-semibold text-xl leading-6 text-left">Statistique</h2>
-  
+
       {/* Bouton Filtrer */}
       <button 
         className="bg-[#2B3A67] text-white p-2 rounded-md shadow-md hover:bg-[#1a2b43] flex items-center gap-2"
-        onClick={handleFilterClick} // Trigger filter functionality
+        onClick={handleFilterClick}
       >
         <i className="fas fa-filter text-2xl"></i>
         Filtrer
@@ -548,8 +566,18 @@ const DashboardProf = () => {
           value={selectedDate}
           onChange={handleDateChange}
           className="p-2 border rounded-md"
-          defaultValue={new Date().toISOString().split("T")[0]} // Date par défaut (aujourd'hui)
+          defaultValue={new Date().toISOString().split("T")[0]}
         />
+      </div>
+      <div>
+    <select
+      value={selectedSession}
+      onChange={e => setSelectedSession(e.target.value)}
+      className="p-2 border rounded-md"
+    >
+      <option value="matin">Matin</option>
+      <option value="soir">Soir</option>
+    </select>
       </div>
     </div>
 
@@ -559,7 +587,7 @@ const DashboardProf = () => {
         <select 
           className="p-2 border rounded-md w-full"
           value={selectedCourse} 
-          onChange={handleFormationSelect} // Handle selection of course
+          onChange={handleFormationSelect}
         >
           <option value="">Choisir une formation</option>
           {formations.length > 0 ? (
@@ -581,7 +609,7 @@ const DashboardProf = () => {
         <select 
           className="p-2 border rounded-md w-full mt-4"
           value={selectedGroup}
-          onChange={handleGroupSelect} // Handle selection of group
+          onChange={handleGroupSelect}
         >
           <option value="">Choisir un groupe</option>
           {groups.length > 0 ? (
@@ -647,34 +675,40 @@ const DashboardProf = () => {
           <tr>
             <th className="px-6 py-3 text-left text-sm font-medium">Nom Complet</th>
             <th className="px-6 py-3 text-left text-sm font-medium">Email</th>
-            <th className="px-6 py-3 text-left text-sm font-medium">Statut</th>
+            <th className="px-6 py-3 text-left text-sm font-medium">Statut ({selectedSession})</th>
           </tr>
         </thead>
         <tbody>
           {filteredStudents.length > 0 ? (
-            // Filtrage selon le statut
             filteredStudents
-              .filter(student => student.groupe === selectedGroup && student.formation === selectedCourse) // Filtrage par groupe et formation
+              .filter(student => student.groupe === selectedGroup && student.formation === selectedCourse)
               .filter(student => {
-                if (view === 'present') return attendance[student.id] === 'present'; // Filtrer les étudiants présents
-                if (view === 'absent') return attendance[student.id] === 'absent'; // Filtrer les étudiants absents
-                return true; // Si "total", afficher tous les étudiants
+  const status = attendance[student.id]?.[selectedSession];
+  if (!status) return false; // ignore tant que le statut n'est pas chargé
+
+  if (view === 'present') return status === 'present';
+  if (view === 'absent') return status === 'absent';
+  return true; // total
+})
+
+              .map(student => {
+                const status = attendance[student.id]?.[selectedSession] || 'aucune-présence';
+                return (
+                  <tr key={student.id} className="border-t hover:bg-gray-100">
+                    <td className="px-6 py-4 text-sm text-gray-700">{student.name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-700">{student.email}</td>
+                    <td className="px-6 py-4 text-sm text-gray-700">
+                      {status === 'aucune-présence' ? (
+                        <span className="text-gray-500">Aucune Présence</span>
+                      ) : (
+                        <span className={`font-semibold ${status === 'present' ? 'text-green-500' : 'text-red-500'}`}>
+                          {status === 'present' ? 'Présent' : 'Absent'}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
               })
-              .map((student) => (
-                <tr key={student.id} className="border-t hover:bg-gray-100">
-                  <td className="px-6 py-4 text-sm text-gray-700">{student.name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{student.email}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {attendance[student.id] === 'aucune-présence' ? (
-                      <span className="text-gray-500">Aucune Présence</span> // Afficher "Aucune Présence" en gris
-                    ) : (
-                      <span className={`font-semibold ${attendance[student.id] === 'present' ? 'text-green-500' : 'text-red-500'}`}>
-                        {attendance[student.id] === 'present' ? 'Présent' : 'Absent'}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))
           ) : (
             <tr>
               <td colSpan="3" className="px-6 py-4 text-center text-sm text-gray-500">Aucun étudiant trouvé</td>
@@ -685,6 +719,9 @@ const DashboardProf = () => {
     </div>
   </div>
 )}
+
+
+
 
   </div>
 )}
