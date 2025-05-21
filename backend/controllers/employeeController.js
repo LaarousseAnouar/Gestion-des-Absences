@@ -42,10 +42,18 @@ const getEmployeeCount = async (req, res) => {
 
 // Fonction pour récupérer les absences de la journée
 const getDailyAbsences = async (req, res) => {
-  const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+  const { type } = req.query; // 'students' ou 'employees'
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+  // Choix dynamique de la table
+  let tableName;
+  if (type === 'students') tableName = 'attendance_students';
+  else if (type === 'employees') tableName = 'attendance_employees';
+  else return res.status(400).json({ error: 'Type must be students or employees' });
+
   try {
     const result = await client.query(
-      'SELECT COUNT(*) FROM attendance WHERE date = $1 AND status = $2',
+      `SELECT COUNT(*) FROM ${tableName} WHERE date = $1 AND status = $2`,
       [today, 'absent']
     );
     res.json({ count: result.rows[0].count });
@@ -54,24 +62,29 @@ const getDailyAbsences = async (req, res) => {
   }
 };
 
-// Fonction pour récupérer la présence de la semaine
 const getWeeklyPresence = async (req, res) => {
-  const startOfWeek = new Date();
-  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // Dimanche de la semaine actuelle
-  const endOfWeek = new Date();
-  endOfWeek.setDate(endOfWeek.getDate() - endOfWeek.getDay() + 6); // Samedi de la semaine actuelle
+  const { type } = req.query; // 'students' ou 'employees'
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay()); // dimanche début semaine
+  const endOfWeek = new Date(now);
+  endOfWeek.setDate(now.getDate() - now.getDay() + 6); // samedi fin semaine
+
+  let tableName;
+  if (type === 'students') tableName = 'attendance_students';
+  else if (type === 'employees') tableName = 'attendance_employees';
+  else return res.status(400).json({ error: 'Type must be students or employees' });
 
   try {
     const result = await client.query(
-      'SELECT COUNT(*) FROM attendance WHERE date BETWEEN $1 AND $2 AND status = $3',
-      [startOfWeek.toISOString().split('T')[0], endOfWeek.toISOString().split('T')[0], 'présent']
+      `SELECT COUNT(*) FROM ${tableName} WHERE date BETWEEN $1 AND $2 AND status = $3`,
+      [startOfWeek.toISOString().split('T')[0], endOfWeek.toISOString().split('T')[0], 'present']
     );
     res.json({ count: result.rows[0].count });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
-
 
 // Fonction pour récupérer tous les employés
 const getAllEmployees = async (req, res) => {

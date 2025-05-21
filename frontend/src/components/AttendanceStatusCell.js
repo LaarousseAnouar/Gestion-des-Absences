@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import axios from "axios";
 
 const capitalize = (str) => str && str.charAt(0).toUpperCase() + str.slice(1);
-
 const AttendanceStatusCell = ({ id, session, currentStatus, date, type, onUpdate }) => {
   const [editing, setEditing] = React.useState(false);
   const [newStatus, setNewStatus] = React.useState(currentStatus || "");
@@ -40,7 +39,7 @@ const AttendanceStatusCell = ({ id, session, currentStatus, date, type, onUpdate
       autoFocus
       className="rounded px-1 text-sm bg-white text-gray-900 border border-gray-300"
     >
-      {["present", "absent"].map(status => (
+      {["present", "absent" ,"Aucune présence"].map(status => (
         <option key={status} value={status}>
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </option>

@@ -53,8 +53,6 @@ const DashboardDirectionPedagogique = () => {
     email: '',
     fonction: '',
   });
-
-  
   // Fetch Employees or Students based on selected tab
   useEffect(() => {
     const fetchData = async () => {

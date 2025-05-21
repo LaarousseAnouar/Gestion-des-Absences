@@ -86,45 +86,58 @@ const DashboardAdmin = () => {
   
 
   const CarteInfo = ({ titre, apiUrl }) => {
-    const [ouvert, setOuvert] = useState(false);
-    const [donnees, setDonnees] = useState(null);
-    const [chargement, setChargement] = useState(false);
+  const [ouvert, setOuvert] = useState(false);
+  const [donnees, setDonnees] = useState(null);
+  const [chargement, setChargement] = useState(false);
+  const [hover, setHover] = useState(false);
 
-    const basculerCarte = async () => {
-      if (!ouvert && donnees === null) {
-        setChargement(true);
-        try {
-          const reponse = await fetch(apiUrl);
-          const resultat = await reponse.json();
-          setDonnees(resultat.count);
-        } catch (erreur) {
-          console.error('Erreur lors du chargement:', erreur);
-        }
-        setChargement(false);
+  const basculerCarte = async () => {
+    if (!ouvert && donnees === null) {
+      setChargement(true);
+      try {
+        const reponse = await fetch(apiUrl);
+        const resultat = await reponse.json();
+        setDonnees(resultat.count);
+      } catch (erreur) {
+        console.error('Erreur lors du chargement:', erreur);
       }
-      setOuvert(!ouvert);
-    };
-
-    return (
-      <div className="w-80 bg-[#4B0082] text-white rounded-xl shadow-lg transition-all duration-300 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 cursor-pointer" onClick={basculerCarte}>
-          <h2 className="text-lg font-semibold">{titre}</h2>
-        </div>
-
-        <div
-          className={`px-6 bg-white transition-all duration-300 ${
-            ouvert ? 'max-h-40 py-4 opacity-100' : 'max-h-0 py-0 opacity-0'
-          } overflow-hidden`}
-        >
-          {chargement ? (
-            <p className="text-gray-500 text-sm">Chargement...</p>
-          ) : donnees !== null ? (
-            <p className="text-[#4B0082] text-xl font-semibold">Nombre : {donnees}</p>
-          ) : null}
-        </div>
-      </div>
-    );
+      setChargement(false);
+    }
+    setOuvert(!ouvert);
   };
+
+  return (
+    <div
+      className={`
+        bg-[#4B0082] text-white rounded-lg shadow-md transition-all duration-300 overflow-hidden
+        ${hover ? 'w-64 max-h-64' : 'w-48 max-h-48'}
+      `}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <div
+        className="flex items-center justify-between px-4 py-3 cursor-pointer"
+        onClick={basculerCarte}
+      >
+        <h2 className="text-sm font-semibold truncate">{titre}</h2>
+      </div>
+
+      <div
+        className={`
+          px-4 bg-white transition-all duration-300 overflow-hidden
+          ${ouvert ? 'max-h-40 py-3 opacity-100' : 'max-h-0 py-0 opacity-0'}
+        `}
+      >
+        {chargement ? (
+          <p className="text-gray-500 text-xs">Chargement...</p>
+        ) : donnees !== null ? (
+          <p className="text-[#4B0082] text-lg font-semibold">Nombre : {donnees}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+};
+
 
   return (
     <div className="flex">
@@ -165,22 +178,31 @@ const DashboardAdmin = () => {
           Bienvenue, {adminName ? adminName : 'Utilisateur non trouvé'} ! Votre progression est excellente.
         </p>
 
-        {sectionActive === "statistique" && (
-          <div className="flex justify-center w-full space-x-8">
-            <CarteInfo
-              titre="Nombre d'employés"
-              apiUrl="http://localhost:3000/api/employee-count"
-            />
-            <CarteInfo
-              titre="Absences de la Journée"
-              apiUrl="http://localhost:3000/api/daily-absences"
-            />
-            <CarteInfo
-              titre="Présence de la Semaine"
-              apiUrl="http://localhost:3000/api/weekly-presence"
-            />
-          </div>
-        )}
+       {sectionActive === "statistique" && (
+  <div className="flex justify-center w-full space-x-8">
+    <CarteInfo
+      titre="Nombre d'employés"
+      apiUrl="http://localhost:3000/api/employee-count"
+    />
+    <CarteInfo
+      titre="Absences de la Journée (Employés)"
+      apiUrl="http://localhost:3000/api/daily-absences?type=employees"
+    />
+    <CarteInfo
+      titre="Absences de la Journée (Étudiants)"
+      apiUrl="http://localhost:3000/api/daily-absences?type=students"
+    />
+    <CarteInfo
+      titre="Présence de la Semaine (Employés)"
+      apiUrl="http://localhost:3000/api/weekly-presence?type=employees"
+    />
+    <CarteInfo
+      titre="Présence de la Semaine (Étudiants)"
+      apiUrl="http://localhost:3000/api/weekly-presence?type=students"
+    />
+  </div>
+)}
+
         {/*////////////////////////////////////////////////////////////////////////////////////////////////////// */}
 
 {sectionActive === "emploi_du_temps" && emploiDuTemps && (
