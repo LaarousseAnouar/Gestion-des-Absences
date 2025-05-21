@@ -103,8 +103,8 @@ const DashboardDirectionPedagogique = () => {
   }, [selectedFormation]);
 
   useEffect(() => {
-  setAttendanceData({});
-}, [selectedTab]);
+    setAttendanceData({});
+  }, [selectedTab]);
 
   useEffect(() => {
   const fetchAttendanceStatus = async () => {

@@ -51,50 +51,64 @@ const getAdminName = async (req, res) => {
     res.status(500).send('Erreur lors de la récupération du nom de l\'administrateur');
   }
 };
-// Dans votre fonction `getEmploiDuTempsByCriteria`
-const getEmploiDuTempsByCriteria = async (req, res) => {
-  const { formationId, groupId, professorId } = req.query;
+const getEmploiDuTempsGroupe = async (req, res) => {
+  const { groupId } = req.params;
 
   try {
-    let query = '';
-    let params = [];
+    const result = await client.query(
+      `SELECT emploi_du_temps FROM groupes WHERE id = $1`,
+      [groupId]
+    );
 
-    if (groupId && professorId) {
-      query = 'SELECT emploi_du_temps FROM groupes WHERE formation_id = $1 AND id = $2';
-      params = [formationId, groupId];
-    } else if (groupId) {
-      query = 'SELECT emploi_du_temps FROM groupes WHERE formation_id = $1 AND id = $2';
-      params = [formationId, groupId];
-    } else if (professorId) {
-      query = 'SELECT emploi_du_temps FROM employees WHERE formation_id = $1 AND id = $2';
-      params = [formationId, professorId];
-    } else {
-      return res.status(400).send('Veuillez spécifier un groupe ou un professeur.');
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Groupe non trouvé" });
     }
 
-    const result = await client.query(query, params);
-
-    if (result.rows.length > 0) {
-      // Convertir le buffer en Base64
-      const emploiDuTempsBase64 = result.rows[0].emploi_du_temps.toString('base64');
-      res.json({ emploi_du_temps: emploiDuTempsBase64 });
-    } else {
-      res.status(404).send('Aucun emploi du temps trouvé pour ces critères');
+    const emploiDuTempsBuffer = result.rows[0].emploi_du_temps;
+    if (!emploiDuTempsBuffer) {
+      return res.status(404).json({ error: "Aucun emploi du temps disponible pour ce groupe" });
     }
+
+    const emploiDuTempsBase64 = emploiDuTempsBuffer.toString('base64');
+    res.json({ emploiDuTempsBase64 });
   } catch (err) {
-    console.error('Erreur lors de la récupération de l\'emploi du temps : ', err);
-    res.status(500).send('Erreur lors de la récupération des données');
+    console.error("Erreur récupération emploi du temps groupe:", err);
+    res.status(500).json({ error: "Erreur serveur" });
   }
 };
 
+// Récupérer emploi du temps d'un professeur par son ID
+const getEmploiDuTempsProf = async (req, res) => {
+  const { profId } = req.params;
 
+  try {
+    const result = await client.query(
+      `SELECT emploi_du_temps FROM employees WHERE id = $1`,
+      [profId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Professeur non trouvé" });
+    }
+
+    const emploiDuTempsBuffer = result.rows[0].emploi_du_temps;
+    if (!emploiDuTempsBuffer) {
+      return res.status(404).json({ error: "Aucun emploi du temps disponible pour ce professeur" });
+    }
+
+    const emploiDuTempsBase64 = emploiDuTempsBuffer.toString('base64');
+    res.json({ emploiDuTempsBase64 });
+  } catch (err) {
+    console.error("Erreur récupération emploi du temps professeur:", err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+};
 
 
 module.exports = {
   addAdmin,
   getAdminName,
-  // getEmploiDuTempsGroup,
-  // getEmploiDuTempsEmployee,
-  getEmploiDuTempsByCriteria,
+  getEmploiDuTempsGroupe,
+  getEmploiDuTempsProf,
 
 };

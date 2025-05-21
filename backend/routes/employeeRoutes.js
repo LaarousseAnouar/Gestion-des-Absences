@@ -2,7 +2,7 @@
 
 const express = require('express');
 const multer = require('multer');
-const { addEmployee, getEmployeeCount, getDailyAbsences, getWeeklyPresence, getAllEmployees, getScheduleByEmail ,modifyEmployee ,blockEmployee} = require('../controllers/employeeController'); // Assurez-vous que le contrôleur est correctement importé
+const { addEmployee, getEmployeeCount, getDailyAbsences, getWeeklyPresence, getAllEmployees, getScheduleByEmail ,modifyEmployee ,blockEmployee ,getProfessors} = require('../controllers/employeeController'); // Assurez-vous que le contrôleur est correctement importé
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
@@ -33,5 +33,7 @@ router.get('/professor/:email/schedule', getScheduleByEmail); // Assurez-vous qu
 router.patch('/employees/:id', upload.single('image_employee'), modifyEmployee);
 
 router.patch('/employees/:id/status', blockEmployee);
+
+router.get('/employees/professors', getProfessors);
 
 module.exports = router;

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom'; // Ajoutez cette ligne pour importer Link
+import axios from "axios";
 
 const DashboardAdmin = () => {
   const [sectionActive, setSectionActive] = useState("statistique");
   const [adminName, setAdminName] = useState('');
-  const [emploiDuTemps, setEmploiDuTemps] = useState(false);
   const [showMoreFormation, setShowMoreFormation] = useState(false);
   const [showMoreGroup, setShowMoreGroup] = useState(false);
   const [showMoreProf, setShowMoreProf] = useState(false);
@@ -12,12 +12,23 @@ const DashboardAdmin = () => {
   const toggleFormation = () => setShowMoreFormation(!showMoreFormation);
   const toggleGroup = () => setShowMoreGroup(!showMoreGroup);
   const toggleProf = () => setShowMoreProf(!showMoreProf);
-  const [isEmploiDuTempsVisible, setEmploiDuTempsVisible] = useState(false);
   const [formationId, setFormationId] = useState('');
   const [groupId, setGroupId] = useState('');
   const [professorId, setProfessorId] = useState('');
-  const [emploiDuTempsVisible] = useState(false);
 
+  const [professors, setProfessors] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [formations, setFormations] = useState([]);  // Liste des formations
+  const [groups, setGroups] = useState([]);  // Liste des groupes
+  const [selectedFormation, setSelectedFormation] = useState("");  // Formation sélectionnée
+  const [selectedGroup, setSelectedGroup] = useState("");  // Groupe sélectionné
+  const [selectedProf, setSelectedProf] = useState(null);
+  const [emploiDuTemps, setEmploiDuTemps] = useState(null);
+  const [emploiDuTempsVisible, setEmploiDuTempsVisible] = useState(false);
+
+
+  
   useEffect(() => {
     const fetchAdminName = async () => {
       try {
@@ -41,6 +52,112 @@ const DashboardAdmin = () => {
     fetchAdminName();
   }, []);
 
+  useEffect(() => {
+    const fetchProfessors = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('http://localhost:3000/api/employees/professors');
+        if (!response.ok) throw new Error('Erreur lors du chargement des professeurs');
+        const data = await response.json();
+        setProfessors(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfessors();
+  }, []);
+
+  // Fetch formations list
+ useEffect(() => {
+  const fetchFormations = async () => {
+    try {
+      const res = await fetch("http://localhost:3000/api/formations");
+      const data = await res.json();
+      setFormations(data);
+    } catch (err) {
+      console.error("Erreur lors de la récupération des formations :", err);
+    }
+  };
+  fetchFormations();
+}, []);
+
+// Charger les groupes en fonction du nom de la formation sélectionnée
+useEffect(() => {
+  if (!selectedFormation) {
+    setGroups([]);
+    setSelectedGroup(null);
+    return;
+  }
+
+  const fetchGroups = async () => {
+    try {
+      // Ici on envoie le nom de la formation au backend (et pas son id)
+      const formationNom = encodeURIComponent(selectedFormation.nom);
+      const res = await fetch(`http://localhost:3000/api/groups?formation=${formationNom}`);
+      const data = await res.json();
+
+      if (res.ok) {
+        setGroups(data);
+        setSelectedGroup(null);
+      } else {
+        // Gestion erreur backend (ex: 404)
+        setGroups([]);
+        setSelectedGroup(null);
+        console.error(data.error);
+      }
+    } catch (err) {
+      console.error("Erreur lors de la récupération des groupes :", err);
+    }
+  };
+
+  fetchGroups();
+}, [selectedFormation]);
+
+
+
+const fetchEmploiDuTempsGroupe = async () => {
+  if (!selectedGroup) {
+    alert("Veuillez sélectionner un groupe");
+    return;
+  }
+  try {
+    const res = await fetch(`http://localhost:3000/api/group/${selectedGroup}`);
+    if (!res.ok) throw new Error("Erreur lors du chargement de l'emploi du temps du groupe");
+    const data = await res.json();
+    setEmploiDuTemps(data.emploiDuTempsBase64); // mets à jour l'état avec l'image base64
+    setEmploiDuTempsVisible(true);
+  } catch (err) {
+    console.error(err);
+    alert("Erreur lors du chargement de l'emploi du temps du groupe");
+  }
+};
+
+
+  const fetchEmploiDuTempsProf = async () => {
+    if (!selectedProf) {
+      alert("Veuillez sélectionner un professeur");
+      return;
+    }
+    try {
+      const res = await fetch(`http://localhost:3000/api/prof/${selectedProf}`);
+      if (!res.ok) throw new Error("Erreur lors du chargement de l'emploi du temps du professeur");
+      const data = await res.json();
+      setEmploiDuTemps(data.emploiDuTempsBase64);
+      setEmploiDuTempsVisible(true);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors du chargement de l'emploi du temps du professeur");
+    }
+  };
+
+  const toggleEmploiDuTemps = () => {
+    setEmploiDuTempsVisible(!emploiDuTempsVisible);
+  };
+
+
   const handleStatistiqueClick = () => {
     setSectionActive("statistique");
     setEmploiDuTemps(false);
@@ -55,35 +172,9 @@ const DashboardAdmin = () => {
   const handleGroupChange = (e) => setGroupId(e.target.value);
   const handleProfessorChange = (e) => setProfessorId(e.target.value);
 
-  const toggleEmploiDuTemps = async () => {
-    if (!formationId && !groupId && !professorId) {
-      alert('Veuillez sélectionner au moins une formation, un groupe ou un professeur.');
-      return;
-    }
-
-    let apiUrl = 'http://localhost:3000/api/v1/emploi-du-temps?';
-    if (formationId) apiUrl += `formationId=${formationId}&`;
-    if (groupId) apiUrl += `groupId=${groupId}&`;
-    if (professorId) apiUrl += `professorId=${professorId}&`;
-
-    apiUrl = apiUrl.slice(0, -1); // enlever le dernier '&'
-
-    try {
-      const response = await fetch(apiUrl);
-      const data = await response.json();
-      if (response.ok) {
-        console.log('Données reçues:', data);
-        setEmploiDuTemps(data.emploi_du_temps); // Mettez à jour l'état avec les données Base64
-        setEmploiDuTempsVisible(true);  // Affichez l'élément
-      } else {
-        console.error('Aucun emploi du temps trouvé');
-      }
-    } catch (err) {
-      console.error('Erreur lors du chargement de l\'emploi du temps', err);
-    }
-  };
-
   
+
+    
 
   const CarteInfo = ({ titre, apiUrl }) => {
   const [ouvert, setOuvert] = useState(false);
@@ -207,157 +298,136 @@ const DashboardAdmin = () => {
 
 {sectionActive === "emploi_du_temps" && emploiDuTemps && (
   <div className="flex justify-center w-full space-x-8">
-    {/* Card for Formation */}
+
+    {/* Formation */}
     <div className="bg-white p-6 rounded-lg shadow-lg w-80 border border-gray-300 transform transition duration-300 hover:scale-105">
       <h2 className="font-bold text-xl text-center mb-4">Formation</h2>
-      <div className="space-y-4">
-        <div>
-          <h3 className="font-semibold mb-2">Choisir une formation</h3>
-          <div className="space-y-2">
-            <div className="flex items-center">
-              <input type="radio" className="mr-2" id="web" name="formation" />
-              <label htmlFor="web">Développeur Web Expert</label>
-            </div>
-            <div className="flex items-center">
-              <input type="radio" className="mr-2" id="securite" name="formation" />
-              <label htmlFor="securite">Cybersécurité</label>
-            </div>
-            <div className="flex items-center">
-              <input type="radio" className="mr-2" id="digitalM" name="formation" />
-              <label htmlFor="digitalM">Digital Marketing</label>
-            </div>
-
-            {/* Show more button */}
-            {showMoreFormation && (
-              <>
-                <div className="flex items-center">
-                  <input type="radio" className="mr-2" id="graphicDesign" name="formation" />
-                  <label htmlFor="graphicDesign">Graphic Design</label>
-                </div>
-                <div className="flex items-center">
-                  <input type="radio" className="mr-2" id="dataAnalyst" name="formation" />
-                  <label htmlFor="dataAnalyst">Data-Analyst</label>
-                </div>
-              </>
-            )}
+      <div className="space-y-4 max-h-60 overflow-y-auto">
+        {formations.length === 0 && <p>Aucune formation disponible</p>}
+        {(showMoreFormation ? formations : formations.slice(0, 3)).map((formation) => (
+          <div key={formation.id} className="flex items-center">
+            <input
+              type="radio"
+              className="mr-2"
+              id={`formation-${formation.id}`}
+              name="formation"
+              checked={selectedFormation?.id === formation.id}
+              onChange={() => setSelectedFormation(formation)}
+            />
+            <label htmlFor={`formation-${formation.id}`}>{formation.nom}</label>
           </div>
-          <button onClick={toggleFormation} className="text-blue-500 mt-2">
+        ))}
+        {formations.length > 3 && (
+          <button
+            onClick={() => setShowMoreFormation(!showMoreFormation)}
+            className="text-blue-500 mt-2"
+          >
             {showMoreFormation ? "Voir moins" : "Voir plus"}
           </button>
-        </div>
+        )}
       </div>
     </div>
 
-    {/* Card for Groupes */}
+    {/* Groupes */}
     <div className="bg-white p-6 rounded-lg shadow-lg w-80 border border-gray-300 transform transition duration-300 hover:scale-105">
       <h2 className="font-bold text-xl text-center mb-4">Groupes</h2>
-      <div className="space-y-4">
-        <div>
-          <h3 className="font-semibold mb-2">Choisir un groupe</h3>
-          <div className="space-y-2">
-            <div className="flex items-center">
-              <input type="radio" className="mr-2" id="g1" name="groupe" />
-              <label htmlFor="g1">Groupe 1</label>
-            </div>
-            <div className="flex items-center">
-              <input type="radio" className="mr-2" id="g2" name="groupe" />
-              <label htmlFor="g2">Groupe 2</label>
-            </div>
-            <div className="flex items-center">
-              <input type="radio" className="mr-2" id="g3" name="groupe" />
-              <label htmlFor="g3">Groupe 3</label>
-            </div>
-
-            {/* Show more button */}
-            {showMoreGroup && (
-              <>
-                <div className="flex items-center">
-                  <input type="radio" className="mr-2" id="g4" name="groupe" />
-                  <label htmlFor="g4">Groupe 4</label>
-                </div>
-                <div className="flex items-center">
-                  <input type="radio" className="mr-2" id="g5" name="groupe" />
-                  <label htmlFor="g5">Groupe 5</label>
-                </div>
-              </>
-            )}
+      <div className="space-y-4 max-h-60 overflow-y-auto">
+        {!selectedFormation && <p>Veuillez sélectionner une formation d'abord</p>}
+        {selectedFormation && groups.length === 0 && <p>Aucun groupe disponible pour cette formation</p>}
+        {(showMoreGroup ? groups : groups.slice(0, 3)).map((group) => (
+          <div key={group.id} className="flex items-center">
+            <input
+              type="radio"
+              className="mr-2"
+              id={`groupe-${group.id}`}
+              name="groupe"
+              checked={selectedGroup === group.id}
+              onChange={() => setSelectedGroup(group.id)}
+            />
+            <label htmlFor={`groupe-${group.id}`}>{group.nom}</label>
           </div>
-          <button onClick={toggleGroup} className="text-blue-500 mt-2">
+        ))}
+        {groups.length > 3 && (
+          <button
+            onClick={() => setShowMoreGroup(!showMoreGroup)}
+            className="text-blue-500 mt-2"
+          >
             {showMoreGroup ? "Voir moins" : "Voir plus"}
           </button>
-        </div>
+        )}
       </div>
     </div>
 
-    {/* Card for Professeurs */}
+    {/* Professeurs */}
     <div className="bg-white p-6 rounded-lg shadow-lg w-80 border border-gray-300 transform transition duration-300 hover:scale-105">
       <h2 className="font-bold text-xl text-center mb-4">Professeurs</h2>
-      <div className="space-y-4">
-        <div>
-          <h3 className="font-semibold mb-2">Choisir un professeur</h3>
-          <div className="space-y-2">
-            <div className="flex items-center">
-              <input type="radio" className="mr-2" id="profKhalil" name="professeur" />
-              <label htmlFor="profKhalil">Mr Achaachaa khalil</label>
-            </div>
-            <div className="flex items-center">
-              <input type="radio" className="mr-2" id="profAyoub" name="professeur" />
-              <label htmlFor="profAyoub">Mr Ayyoub Benzakour</label>
-            </div>
-            <div className="flex items-center">
-              <input type="radio" className="mr-2" id="profIssam" name="professeur" />
-              <label htmlFor="profIssam">Mr Issam Jaroudi</label>
-            </div>
-
-            {/* Show more button */}
-            {showMoreProf && (
-              <>
-                <div className="flex items-center">
-                  <input type="radio" className="mr-2" id="profSalah" name="professeur" />
-                  <label htmlFor="profSalah">Mr Salah-Eddine Diouri</label>
-                </div>
-                <div className="flex items-center">
-                  <input type="radio" className="mr-2" id="profSalma" name="professeur" />
-                  <label htmlFor="profSalma">Mlle Salma Fennane</label>
-                </div>
-                <div className="flex items-center">
-                  <input type="radio" className="mr-2" id="profOumaima" name="professeur" />
-                  <label htmlFor="profOumaima">Mlle Oumaima Laamoumi</label>
-                </div>
-              </>
-            )}
+      <div className="space-y-4 max-h-60 overflow-y-auto">
+        {professors.length === 0 && <p>Aucun professeur disponible</p>}
+        {(showMoreProf ? professors : professors.slice(0, 3)).map((prof) => (
+          <div key={prof.id} className="flex items-center">
+            <input
+              type="radio"
+              className="mr-2"
+              id={`prof-${prof.id}`}
+              name="professeur"
+              checked={selectedProf === prof.id}
+              onChange={() => setSelectedProf(prof.id)}
+            />
+            <label htmlFor={`prof-${prof.id}`}>{prof.name}</label>
           </div>
-          <button onClick={toggleProf} className="text-blue-500 mt-2">
+        ))}
+        {professors.length > 3 && (
+          <button
+            onClick={() => setShowMoreProf(!showMoreProf)}
+            className="text-blue-500 mt-2"
+          >
             {showMoreProf ? "Voir moins" : "Voir plus"}
           </button>
-        </div>
+        )}
       </div>
-      
     </div>
-    
+
   </div>
 )}
 
-        {/*////////////////////////////////////////////////////////////////////////////////////////////////////// */}
-
-{/* Bouton pour afficher l'Emploi du Temps */}
+{/* Boutons pour afficher l'Emploi du Temps groupe ou professeur */}
 {sectionActive === "emploi_du_temps" && (
-          <button
-            onClick={toggleEmploiDuTemps}
-            className="mt-6 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600"
-          >
-            {isEmploiDuTempsVisible ? 'Cacher l\'emploi du temps' : 'Afficher l\'emploi du temps'}
-          </button>
-        )}
+  <div className="flex justify-center space-x-4 mt-6">
+    <button
+      onClick={fetchEmploiDuTempsGroupe}
+      disabled={!selectedGroup}
+      className={`py-2 px-4 rounded-lg ${selectedGroup ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-300 cursor-not-allowed'}`}
+    >
+      Afficher l'emploi du temps du groupe
+    </button>
 
-        {/* Affichage de l'Emploi du Temps */}
-        {emploiDuTempsVisible && emploiDuTemps && (
-  <div className="mt-6 bg-white p-6 rounded-lg shadow-lg w-full">
+    <button
+      onClick={fetchEmploiDuTempsProf}
+      disabled={!selectedProf}
+      className={`py-2 px-4 rounded-lg ${selectedProf ? 'bg-purple-500 hover:bg-purple-600 text-white' : 'bg-gray-300 cursor-not-allowed'}`}
+    >
+      Afficher l'emploi du temps du professeur
+    </button>
+
+    {emploiDuTempsVisible && (
+      <button
+        onClick={toggleEmploiDuTemps}
+        className="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600"
+      >
+        Cacher l'emploi du temps
+      </button>
+    )}
+  </div>
+)}
+
+{/* Affichage de l'Emploi du Temps */}
+{emploiDuTempsVisible && emploiDuTemps && (
+  <div className="mt-6 bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl mx-auto">
     <h3 className="font-bold text-xl text-center mb-4">Emploi du Temps</h3>
-    <img 
-      src={`data:image/png;base64,${emploiDuTemps}`} 
-      alt="Emploi du temps" 
-      className="mt-2 w-full max-w-4xl rounded-lg shadow-lg" 
+    <img
+      src={`data:image/png;base64,${emploiDuTemps}`}
+      alt="Emploi du temps"
+      className="w-full rounded-lg shadow-lg"
     />
   </div>
 )}

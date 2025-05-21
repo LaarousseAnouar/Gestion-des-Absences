@@ -188,6 +188,33 @@ const modifyEmployee = async (req, res) => {
  }
 };
 
+const getProfessors = async (req, res) => {
+  try {
+    const result = await client.query(
+      `SELECT id, nom, prenom, email, fonction, image_employee
+       FROM employees
+       WHERE fonction = $1 AND isActive = TRUE
+       ORDER BY createdAt DESC`,
+      ['professor']
+    );
+
+    // Formatage pour inclure la photo en base64 si existante
+    const professors = result.rows.map(emp => ({
+      id: emp.id,
+      nom: emp.nom,
+      prenom: emp.prenom,
+      email: emp.email,
+      fonction: emp.fonction,
+      photo: emp.image_employee ? emp.image_employee.toString('base64') : null,
+      name: `${emp.nom} ${emp.prenom}`
+    }));
+
+    res.json(professors);
+  } catch (err) {
+    console.error('Erreur lors de la récupération des professeurs:', err);
+    res.status(500).json({ error: 'Erreur serveur lors de la récupération des professeurs' });
+  }
+};
 
 // Exportation des fonctions
 module.exports = {
@@ -199,4 +226,5 @@ module.exports = {
   getScheduleByEmail,
   modifyEmployee,
   blockEmployee,
+  getProfessors,
 };
