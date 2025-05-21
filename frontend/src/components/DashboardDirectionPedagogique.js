@@ -393,7 +393,46 @@ const openModalForEmployee = (employee) => {
     }
   };
   
-  
+  const handleSubmitAddUser = async (e) => {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append("nom", nom);
+    formData.append("prenom", prenom);
+    formData.append("email", email);
+    if (selectedTab === "Employee") {
+      formData.append("fonction", fonction);
+    } else {
+      formData.append("groupe_id", groupeId);
+      formData.append("telephone", telephone);
+      formData.append("date_naissance", dateNaissance);
+      formData.append("status", status);
+    }
+    if (image) {
+      formData.append(userType === "employee" ? "image_employee" : "image_student", image);
+    }
+
+    try {
+      const res = await axios.post(
+        `http://localhost:3000/api/${userType === "employee" ? "add-employee" : "add-student"}`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      console.log(res.data);
+      // Réinitialiser le formulaire après ajout
+      setNom("");
+      setPrenom("");
+      setEmail("");
+      setFonction("");
+      setGroupeId("");
+      setTelephone("");
+      setDateNaissance("");
+      setStatus("");
+      setImage(null);
+      setSelectedFormation(""); // Reset formation selection
+    } catch (err) {
+      console.error("Erreur lors de l'ajout:", err);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -401,7 +440,7 @@ const openModalForEmployee = (employee) => {
       <div className="w-64 bg-white shadow-md">
         <img src="/images/logo.webp" alt="ITBP Logo" className="w-3/4 mb-8" />
         <div className="mt-6 space-y-4">
-          {["Employee", "Etudiant"].map((tab) => (
+          {["Employee", "Etudiant" ,"Ajouter"].map((tab) => (
             <div
               key={tab}
               className={`px-6 py-2 hover:bg-gray-100 cursor-pointer ${selectedTab === tab ? "bg-gray-200" : ""}`}
@@ -832,6 +871,172 @@ const openModalForEmployee = (employee) => {
   </div>
 )}
 
+
+{selectedTab === "Ajouter" && (
+  <div className="bg-white p-6 rounded-lg shadow-lg">
+    <h2 className="text-2xl font-semibold text-gray-700 mb-4">
+      Ajouter un {userType === "employee" ? "Employé" : "Étudiant"}
+    </h2>
+    <form onSubmit={handleSubmitAddUser}>
+      {/* Sélectionner le type (Employé ou Étudiant) */}
+      <div className="mb-4">
+        <label htmlFor="userType" className="block text-gray-600">Type d'utilisateur</label>
+        <select
+          id="userType"
+          value={userType}
+          onChange={(e) => setUserType(e.target.value)}
+          className="w-full p-2 border border-gray-300 rounded-md"
+        >
+          <option value="employee">Employé</option>
+          <option value="student">Étudiant</option>
+        </select>
+      </div>
+
+      {/* Sélectionner la formation */}
+      {userType === "student" && (
+        <div className="mb-4">
+          <label htmlFor="selectedFormation" className="block text-gray-600">Formation</label>
+          <select
+            id="selectedFormation"
+            value={selectedFormation}
+            onChange={(e) => setSelectedFormation(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md"
+          >
+            <option value="">Choisir une formation</option>
+            {formations.map((formation, index) => (
+              <option key={index} value={formation.nom}>
+                {formation.nom}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Sélectionner le groupe */}
+      {userType === "student" && selectedFormation && (
+        <div className="mb-4">
+          <label htmlFor="groupeId" className="block text-gray-600">Groupe</label>
+          <select
+            id="groupeId"
+            value={groupeId}
+            onChange={(e) => setGroupeId(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md"
+          >
+            <option value="">Choisir un groupe</option>
+            {groups.map((group, index) => (
+              <option key={index} value={group.id}>
+                {group.nom}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Nom */}
+      <div className="mb-4">
+        <label htmlFor="nom" className="block text-gray-600">Nom</label>
+        <input
+          type="text"
+          id="name"
+          value={nom}
+          onChange={(e) => setNom(e.target.value)}
+          required
+          className="w-full p-2 border border-gray-300 rounded-md"
+        />
+      </div>
+
+      {/* Prénom */}
+      <div className="mb-4">
+        <label htmlFor="prenom" className="block text-gray-600">Prénom</label>
+        <input
+          type="text"
+          id="prenom"
+          value={prenom}
+          onChange={(e) => setPrenom(e.target.value)}
+          required
+          className="w-full p-2 border border-gray-300 rounded-md"
+        />
+      </div>
+
+      {/* Email */}
+      <div className="mb-4">
+        <label htmlFor="email" className="block text-gray-600">Email</label>
+        <input
+          type="email"
+          id="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="w-full p-2 border border-gray-300 rounded-md"
+        />
+      </div>
+
+      {/* Téléphone */}
+      {userType === "student" && (
+        <div className="mb-4">
+          <label htmlFor="telephone" className="block text-gray-600">Téléphone</label>
+          <input
+            type="text"
+            id="telephone"
+            value={telephone}
+            onChange={(e) => setTelephone(e.target.value)}
+            required
+            className="w-full p-2 border border-gray-300 rounded-md"
+          />
+        </div>
+      )}
+
+      {/* Date de naissance */}
+      {userType === "student" && (
+        <div className="mb-4">
+          <label htmlFor="dateNaissance" className="block text-gray-600">Date de naissance</label>
+          <input
+            type="date"
+            id="dateNaissance"
+            value={dateNaissance}
+            onChange={(e) => setDateNaissance(e.target.value)}
+            required
+            className="w-full p-2 border border-gray-300 rounded-md"
+          />
+        </div>
+      )}
+
+      {/* Statut */}
+      {userType === "student" && (
+        <div className="mb-4">
+          <label htmlFor="status" className="block text-gray-600">Statut</label>
+          <input
+            type="text"
+            id="status"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            required
+            className="w-full p-2 border border-gray-300 rounded-md"
+          />
+        </div>
+      )}
+
+      {/* Image */}
+      <div className="mb-4">
+        <label htmlFor="image" className="block text-gray-600">Image</label>
+        <input
+          type="file"
+          id="image"
+          onChange={(e) => setImage(e.target.files[0])}
+          className="w-full p-2 border border-gray-300 rounded-md"
+        />
+      </div>
+
+      {/* Bouton Ajouter avec un peu plus de marge en bas */}
+      <button
+        type="submit"
+        className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 mb-6"
+      >
+        Ajouter
+      </button>
+    </form>
+  </div>
+)}
 
 
       </div>

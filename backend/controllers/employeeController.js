@@ -6,27 +6,27 @@ const multer = require('multer');
 
 // Fonction pour ajouter un employé
 const addEmployee = async (req, res) => {
-  const { nom, prenom, email, password, fonction } = req.body;
+  const { nom, prenom, email, password, fonction, formation_id } = req.body;
 
-  // Accès correct aux fichiers
-  const image = req.files && req.files['image_employee'] ? req.files['image_employee'][0].buffer : null;  
-  const emploiDuTemps = req.files && req.files['emploi_du_temps'] ? req.files['emploi_du_temps'][0].buffer : null;  
+  // Accès aux fichiers
+  const image = req.files && req.files['image_employee'] ? req.files['image_employee'][0].buffer : null;
+  const emploiDuTemps = req.files && req.files['emploi_du_temps'] ? req.files['emploi_du_temps'][0].buffer : null;
 
   try {
-    // Hachage du mot de passe
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insertion dans la base de données
+    // Insertion avec formation_id
     const result = await client.query(
-      'INSERT INTO employees (nom, prenom, email, password, fonction, image_employee, emploi_du_temps) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [nom, prenom, email, hashedPassword, fonction, image, emploiDuTemps]
+      `INSERT INTO employees (
+        nom, prenom, email, password, fonction, image_employee, emploi_du_temps, formation_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [nom, prenom, email, hashedPassword, fonction, image, emploiDuTemps, formation_id || null]
     );
 
-    // Réponse avec les données de l'employé ajouté
-    res.status(201).json(result.rows[0]);  
+    res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Erreur lors de l\'ajout de l\'employé');
+    console.error("Erreur lors de l'ajout de l'employé :", err);
+    res.status(500).send("Erreur lors de l'ajout de l'employé");
   }
 };
 
