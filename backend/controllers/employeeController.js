@@ -115,8 +115,8 @@ const getScheduleByEmail = async (req, res) => {
 
   try {
     const result = await client.query(
-      `SELECT nom, prenom, email, image_employee, emploi_du_temps 
-      FROM employees WHERE email = $1`, 
+      `SELECT id, nom, prenom, email, image_employee, emploi_du_temps 
+       FROM employees WHERE email = $1`, 
       [email]
     );
 
@@ -124,13 +124,14 @@ const getScheduleByEmail = async (req, res) => {
       return res.status(404).json({ message: 'Professeur non trouvé' });
     }
 
-    const { nom, prenom, image_employee, emploi_du_temps } = result.rows[0];
+    const { id, nom, prenom, image_employee, emploi_du_temps } = result.rows[0];
 
     // Conversion en base64 des images et emploi du temps
     const imageBase64 = image_employee ? Buffer.from(image_employee).toString('base64') : null;
     const emploiDuTempsBase64 = emploi_du_temps ? Buffer.from(emploi_du_temps).toString('base64') : null;
 
     res.json({
+      id,                  // Ajout de l'id ici
       nom,
       prenom,
       image: imageBase64,   // Image en base64

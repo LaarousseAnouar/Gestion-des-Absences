@@ -86,7 +86,7 @@ CREATE TABLE cours_hours (
     start_time TIME,
     end_time TIME,
     pause_time INTERVAL,
-    total_hours DECIMAL,
+    total_hours INTERVAL,
     date DATE
 );
 9. Table calendar (Calendrier)

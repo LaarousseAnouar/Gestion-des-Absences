@@ -37,6 +37,7 @@ const DashboardProf = () => {
   const [totalHours, setTotalHours] = useState(0); // Initial total hours, will be calculated during the course
 
   const [selectedSession, setSelectedSession] = useState('matin'); // valeur par défaut matin
+  const [coursId, setCoursId] = useState(null);
 
   // Vérification si l'email est disponible
   if (!email) {
@@ -45,27 +46,26 @@ const DashboardProf = () => {
 
   // Fonction pour récupérer les informations du professeur (nom, prénom, image, emploi du temps)
   useEffect(() => {
-    const fetchProfessorData = async () => {
-      try {
-        // Effectuer la requête pour récupérer les données du professeur
-        const response = await axios.get(`http://localhost:3000/api/professor/${email}/schedule`, {
-          headers: {
-            'Authorization': `Bearer ${token}`, // Remplacez `token` par la valeur réelle de votre token
-          },
-        });
-        setProfessorData(response.data); // Stocke les données récupérées dans l'état
-      } catch (error) {
-        console.error('Erreur lors de la récupération des informations du professeur:', error);
-        setError('Erreur lors de la récupération des informations du professeur. Veuillez réessayer plus tard.'); // Gérer l'erreur
-      } finally {
-        setIsLoading(false); // Fin du chargement
-      }
-    };
-
-    if (email) {
-      fetchProfessorData();  // Si l'email est disponible, on fait la requête
+  const fetchProfessorData = async () => {
+    try {
+      const response = await axios.get(`http://localhost:3000/api/professor/${email}/schedule`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      console.log('Données prof API:', response.data);  // <- Mets un log ici pour voir la structure
+      setProfessorData(response.data);
+    } catch (error) {
+      console.error('Erreur récupération prof:', error);
+      setError('Impossible de récupérer les données du professeur.');
+    } finally {
+      setIsLoading(false);
     }
-  }, [email]);
+  };
+
+  if (email) {
+    fetchProfessorData();
+  }
+}, [email]);
+
 
   useEffect(() => {
     if (timerActive) {
@@ -82,8 +82,8 @@ const DashboardProf = () => {
   //+}++++++}++}}}+}}}}++++++++++++++}}}}}+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++}
   useEffect(() => {
     const timer = setTimeout(() => {
-      setIsLoading(false);  // après 4 secondes, on arrête le loading
-    }, 4000); // 4000 ms = 4 secondes
+      setIsLoading(false);  // après 3 secondes, on arrête le loading
+    }, 3000); // 3000 ms = 3 secondes
 
     return () => clearTimeout(timer); // nettoyage du timer si le composant est démonté
   }, []);
@@ -182,7 +182,7 @@ const DashboardProf = () => {
   
   
   
-//+}}++++++}++++++++}}}+}}}}}}}+}++++++++}}++++++++++++++++++++}}+++++}++++++++++++++++++++++++++++}}}}+}+}}}++++++++++++++++}}+++++++++++++++++
+
   // Affichage pendant le chargement
   if (isLoading) {
     return (
@@ -197,40 +197,130 @@ const DashboardProf = () => {
   if (error) {
     return <div>{error}</div>;
   }
+//+}}++++++}++++++++}}}+}}}}}}}+}++++++++}}++++++++++++++++++++}}+++++}++++++++++++++++++++++++++++}}}}+}+}}}++++++++++++++++}}+++++++++++++++++
 
-  const handleStartClick = async () => {
-    setIsRunning(true);
-    setTimerActive(true);
-  
-    const startTime = new Date();
-    const formattedStartTime = startTime.toISOString().split('T')[1]; // Extract just the time part for start_time
-  
-    setStartTime(formattedStartTime); // Store the start time in the state
-  
-    const courseData = {
-      teacher_id: professorData.id,
-      formation_id: selectedFormation,
-      groupe_id: selectedGroup,
-      start_time: formattedStartTime,
-      end_time: endTime, // Will be calculated later
-      pause_time: pauseTime, // Example pause time
-      total_hours: totalHours, // Will be updated after course completion
-      date: selectedDate, // The selected date for the course
-    };
-  
-    try {
-      await axios.post('http://localhost:3000/api/cours_hours', courseData, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      
-      // Show success alert after course is saved
-      alert('Le cours a été enregistré avec succès!');
-    } catch (error) {
-      console.error('Erreur lors de l\'enregistrement du cours:', error);
-      setError('Erreur lors de l\'enregistrement du cours');
-    }
+// Fonction utilitaire pour formater l'heure locale en "HH:MM:SS"
+function formatTimeLocal(date) {
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const seconds = date.getSeconds().toString().padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
+}
+
+// handleStartClick corrigée
+const handleStartClick = async () => {
+  if (!professorData || !professorData.id) {
+    alert("Impossible de démarrer le cours : données du professeur non chargées.");
+    return;
+  }
+
+  if (!selectedCourse || !selectedGroup || !selectedDate) {
+    alert('Veuillez sélectionner une formation, un groupe et une date avant de démarrer le cours.');
+    return;
+  }
+
+  const formationSelectedObj = formations.find(f => f.nom === selectedCourse);
+  if (!formationSelectedObj) {
+    alert('Formation sélectionnée invalide.');
+    return;
+  }
+
+  const groupeSelectedObj = groups.find(g => g.nom === selectedGroup);
+  if (!groupeSelectedObj) {
+    alert('Groupe sélectionné invalide.');
+    return;
+  }
+
+  setIsRunning(true);
+  setTimerActive(true);
+
+  const startTime = new Date();
+  const formattedStartTime = formatTimeLocal(startTime);
+
+  setStartTime(formattedStartTime);
+
+  const courseData = {
+    teacher_id: professorData.id,
+    formation_id: formationSelectedObj.id,
+    groupe_id: groupeSelectedObj.id,
+    start_time: formattedStartTime,
+    end_time: null,
+    pause_time: pauseTime || "00:00:00",
+    total_hours: "00:00:00",
+    date: selectedDate,
   };
-  
+
+  //console.log("Données envoyées au backend :", courseData);
+
+  try {
+    const response = await axios.post('http://localhost:3000/api/cours_hours', courseData, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    setCoursId(response.data.cours_id);
+    //alert('Le cours a été enregistré avec succès!');
+  } catch (error) {
+    console.error('Erreur lors de l\'enregistrement du cours:', error.response || error.message);
+    setError('Erreur lors de l\'enregistrement du cours');
+  }
+};
+
+// handleFinishClick corrigée
+const handleFinishClick = async () => {
+  if (!coursId) {
+    alert("Erreur : identifiant du cours introuvable. Veuillez redémarrer le cours.");
+    return;
+  }
+
+  const endTime = new Date();
+  const formattedEndTime = formatTimeLocal(endTime);
+
+  setEndTime(formattedEndTime);
+
+  setIsRunning(false);
+  setTimerActive(false);
+
+  // Conversion de startTime "HH:MM:SS" en Date locale pour le calcul de durée
+  const [startH, startM, startS] = startTime.split(':').map(Number);
+  const startDateTime = new Date();
+  startDateTime.setHours(startH, startM, startS, 0);
+
+  let durationMs = endTime - startDateTime;
+
+  // Calcul de la pause en millisecondes
+  const [pauseH, pauseM, pauseS] = (pauseTime || "00:00:00").split(':').map(Number);
+  const pauseMs = (pauseH * 3600 + pauseM * 60 + pauseS) * 1000;
+
+  durationMs -= pauseMs;
+
+  if (durationMs < 0) durationMs = 0;
+
+  const totalSeconds = Math.floor(durationMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const totalHoursInterval = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+  setTotalHours(totalHoursInterval);
+
+  const courseData = {
+    end_time: formattedEndTime,
+    total_hours: totalHoursInterval,
+    pause_time: pauseTime,
+  };
+
+  console.log("Données envoyées pour mise à jour :", courseData);
+
+  try {
+    await axios.put(`http://localhost:3000/api/cours_hours/${coursId}`, courseData, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    alert('Le cours a été terminé et mis à jour avec succès!');
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du cours:', error.response || error.message);
+    setError('Erreur lors de la mise à jour du cours');
+  }
+};
 
   // Fonction pour arrêter le compteur
   const handleStopClick = () => {
@@ -246,44 +336,14 @@ const DashboardProf = () => {
     }
   };
 
-  const handleFinishClick = async () => {
-    const endTime = new Date(); // Get the current time as end time
-    setEndTime(endTime.toISOString().split('T')[1]); // Store the end time
-    setIsRunning(false);
-    setTimerActive(false);
   
-    // Calculate total hours: For example, 2 hours minus a 10-minute pause
-    const duration = (endTime - new Date(startTime)) / 1000 / 60 / 60; // Duration in hours
-    const totalHours = duration - (parseInt(pauseTime.split(':')[0]) / 60); // Subtract pause time from duration
-  
-    setTotalHours(totalHours); // Store total hours
-  
-    const courseData = {
-      teacher_id: professorData.id,
-      formation_id: selectedFormation,
-      groupe_id: selectedGroup,
-      start_time: startTime,
-      end_time: endTime.toISOString().split('T')[1], // Just the time part
-      pause_time: pauseTime,
-      total_hours: totalHours,
-      date: selectedDate,
-    };
-  
-    try {
-      await axios.put('http://localhost:3000/api/cours_hours', courseData, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      
-      // Show success alert after course is updated
-      alert('Le cours a été terminé et mis à jour avec succès!');
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour du cours:', error);
-      setError('Erreur lors de la mise à jour du cours');
-    }
-  };
+  function formatTimeLocal(date) {
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const seconds = date.getSeconds().toString().padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
+}
 
-  
-  
   // Formater le temps en heures:minutes:secondes
   const formatTime = (timeInSeconds) => {
     const hours = Math.floor(timeInSeconds / 3600);
@@ -295,15 +355,14 @@ const DashboardProf = () => {
       .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-// ++++}}}}++}++++++++++++}}}+}}}}}}}+++++++++++++++++}}+++++}}}}}}}++++}}}++++++}++++}
   const handleSectionChange = (section) => {
     setActiveSection(section); // Mettez à jour la section active
   };
 
-
   const handleDateChange = (e) => {
     setSelectedDate(e.target.value); // Stocke la date sélectionnée dans l'état
   };
+  
   
   // +}+++++}+++}}}}}++}}}++}+}}}}+}}++++++}}++++++}}}}}}}+}}+}++++++++++++++}}+++++++}++++++++++++++++++++++++}
   const handleViewChange = (type) => {
@@ -470,8 +529,10 @@ const filteredStudents = students.filter(student => {
         <button className="bg-purple-100 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-full text-left" onClick={handleStartClick}>
           <div className="flex justify-between items-center">
             <div className="flex flex-col">
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">Aucune formation sélectionnée</p>
+            <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedCourse || 'Aucune formation sélectionnée'}</p>
               <p className="text-lg text-[#4B5C8A] font-semibold">Démarrer le cours</p>
+              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedGroup || 'Aucun groupe sélectionné'}</p>
+
             </div>
             <div className="text-[#4B5C8A] text-lg font-semibold">{formatTime(elapsedTime)}</div>
           </div>
@@ -483,8 +544,10 @@ const filteredStudents = students.filter(student => {
         <button className="bg-blue-100 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-full text-left" onClick={handleStopClick}>
           <div className="flex justify-between items-center">
             <div className="flex flex-col">
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">Aucune formation sélectionnée</p>
+            <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedCourse || 'Aucune formation sélectionnée'}</p>
               <p className="text-lg text-[#4B5C8A] font-semibold">Arrêter</p>
+              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedGroup || 'Aucun groupe sélectionné'}</p>
+
             </div>
             <div className="text-[#4B5C8A] text-lg font-semibold">{formatTime(elapsedTime)}</div>
           </div>
@@ -496,8 +559,10 @@ const filteredStudents = students.filter(student => {
         <button className="bg-green-100 p-4 rounded-lg shadow-md hover:shadow-lg transition-all w-full text-left" onClick={handleResumeClick}>
           <div className="flex justify-between items-center">
             <div className="flex flex-col">
-              <p className="text-[12px] text-[#4B5C8A] font-semibold">Aucune formation sélectionnée</p>
+            <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedCourse || 'Aucune formation sélectionnée'}</p>
               <p className="text-lg text-[#4B5C8A] font-semibold">Reprendre</p>
+              <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedGroup || 'Aucun groupe sélectionné'}</p>
+
             </div>
             <div className="text-[#4B5C8A] text-lg font-semibold">{formatTime(elapsedTime)}</div>
           </div>
@@ -511,6 +576,8 @@ const filteredStudents = students.filter(student => {
           <div className="flex flex-col">
             <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedCourse || 'Aucune formation sélectionnée'}</p>
             <p className="text-lg text-[#4B5C8A] font-semibold">Terminer le cours</p>
+            <p className="text-[12px] text-[#4B5C8A] font-semibold">{selectedGroup || 'Aucun groupe sélectionné'}</p>
+
           </div>
           <div className="text-[#4B5C8A] text-lg font-semibold">{formatTime(elapsedTime)}</div>
         </div>
@@ -544,7 +611,7 @@ const filteredStudents = students.filter(student => {
 
 {activeSection === "attendance" && (
   <div className="p-6 bg-white rounded-lg shadow-xl max-w-4xl mx-auto mt-6">
-    {/* Icone de filtre */}
+    {/* Icone de filtre */    }
     <div className="flex justify-between items-center mb-4">
       <h2 className="text-[#2B3A67] font-semibold text-xl leading-6 text-left">Statistique</h2>
 

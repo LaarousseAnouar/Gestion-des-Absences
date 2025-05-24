@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom'; // Ajoutez cette ligne pour importer Link
 import axios from "axios";
+import '../index.css';  // ou './globals.css' selon le nom et emplacement
 
 const DashboardAdmin = () => {
   const [sectionActive, setSectionActive] = useState("statistique");
@@ -8,6 +9,7 @@ const DashboardAdmin = () => {
   const [showMoreFormation, setShowMoreFormation] = useState(false);
   const [showMoreGroup, setShowMoreGroup] = useState(false);
   const [showMoreProf, setShowMoreProf] = useState(false);
+  const token = localStorage.getItem('token'); // Récupère le token depuis localStorage
 
   const toggleFormation = () => setShowMoreFormation(!showMoreFormation);
   const toggleGroup = () => setShowMoreGroup(!showMoreGroup);
@@ -26,6 +28,14 @@ const DashboardAdmin = () => {
   const [selectedProf, setSelectedProf] = useState(null);
   const [emploiDuTemps, setEmploiDuTemps] = useState(null);
   const [emploiDuTempsVisible, setEmploiDuTempsVisible] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]); // Date par défaut : aujourd'hui
+  const [showCourses, setShowCourses] = useState(false);
+  const [selectedProfessor, setSelectedProfessor] = useState(null);
+  const [showFilter, setShowFilter] = useState(false);
+  const [noteText, setNoteText] = React.useState("");
+  const [coursHours, setCoursHours] = useState([]);
+const [isDateFiltered, setIsDateFiltered] = useState(false);
 
 
   
@@ -117,7 +127,52 @@ useEffect(() => {
 }, [selectedFormation]);
 
 
+useEffect(() => {
+  if (!selectedProfessor) {
+    setCoursHours([]);
+    return;
+  }
 
+  const fetchCoursHours = async () => {
+    try {
+      let url = `http://localhost:3000/api/cours_hours/teacher/${selectedProfessor.id}`;
+
+      if (isDateFiltered && selectedDate) {
+        // Filtrer uniquement si l'utilisateur a choisi une date
+        url += `?date=${selectedDate}`;
+      }
+      // Sinon (au début), récupérer tous les cours sans filtre
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Erreur lors du chargement des heures de cours");
+      const data = await res.json();
+      setCoursHours(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  fetchCoursHours();
+}, [selectedProfessor, selectedDate, isDateFiltered]);
+
+
+  // Function to toggle visibility of courses
+  const handleFilterClick = () => {
+    setShowFilter(prev => !prev);
+  };
+
+  const handleDateChange = (e) => {
+  setSelectedDate(e.target.value);
+  setIsDateFiltered(true); // on active le filtre dès que l'utilisateur change la date
+};
+
+  const handleProfessorSelect = (prof) => {
+    setSelectedProfessor(prof);
+    setShowFilter(false); // optionnel : fermer la liste après sélection
+  };
+
+  
+  
 const fetchEmploiDuTempsGroupe = async () => {
   if (!selectedGroup) {
     alert("Veuillez sélectionner un groupe");
@@ -167,10 +222,22 @@ const fetchEmploiDuTempsGroupe = async () => {
     setSectionActive("emploi_du_temps");
     setEmploiDuTemps(!emploiDuTemps); // Toggle the Emploi du Temps view
   };
-  // Fonction pour afficher l'emploi du temps
-  const handleFormationChange = (e) => setFormationId(e.target.value);
-  const handleGroupChange = (e) => setGroupId(e.target.value);
-  const handleProfessorChange = (e) => setProfessorId(e.target.value);
+  const handleGestionProfClick = (e) => {
+  e.preventDefault();
+  setSectionActive("gestion_prof");
+  // tu peux ajouter ici la logique spécifique à ce clic si besoin
+};
+
+const formatInterval = (interval) => {
+    if (!interval) return "-";
+    const h = interval.hours ?? 0;
+    const m = interval.minutes ?? 0;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+  // // Fonction pour afficher l'emploi du temps
+  // const handleFormationChange = (e) => setFormationId(e.target.value);
+  // const handleGroupChange = (e) => setGroupId(e.target.value);
+  // const handleProfessorChange = (e) => setProfessorId(e.target.value);
 
   
 
@@ -251,12 +318,22 @@ const fetchEmploiDuTempsGroupe = async () => {
           Emploi du temps
         </a>
 
+        <a
+          href="#gestion-prof"
+          onClick={handleGestionProfClick}
+          className={`text-white px-6 py-3 w-full text-left flex items-center rounded-lg mb-4 transition duration-300 ${
+            sectionActive === "gestion_prof" ? "font-bold text-black border-2 border-black" : "hover:bg-[#e67210]"
+          }`}
+        >
+          Gestion des prof
+        </a>
+
         <Link
             to="/gestion-global"
             className="text-white px-6 py-3 w-full text-left flex items-center hover:bg-[#e67210] rounded-lg mb-4 transition duration-300"
           >
             Gestion Global
-          </Link>
+        </Link>
 
         <a href="#logout" className="text-white px-6 py-3 w-full text-left flex items-center hover:bg-[#e67210] rounded-lg mt-auto transition duration-300">
           Log out
@@ -269,7 +346,7 @@ const fetchEmploiDuTempsGroupe = async () => {
           Bienvenue, {adminName ? adminName : 'Utilisateur non trouvé'} ! Votre progression est excellente.
         </p>
 
-       {sectionActive === "statistique" && (
+{sectionActive === "statistique" && (
   <div className="flex justify-center w-full space-x-8">
     <CarteInfo
       titre="Nombre d'employés"
@@ -294,7 +371,7 @@ const fetchEmploiDuTempsGroupe = async () => {
   </div>
 )}
 
-        {/*////////////////////////////////////////////////////////////////////////////////////////////////////// */}
+         
 
 {sectionActive === "emploi_du_temps" && emploiDuTemps && (
   <div className="flex justify-center w-full space-x-8">
@@ -431,6 +508,116 @@ const fetchEmploiDuTempsGroupe = async () => {
     />
   </div>
 )}
+
+
+
+{sectionActive === "gestion_prof" && (
+  <div className="p-6 bg-white rounded-lg shadow-xl max-w-8xl mx-auto mt-6 min-h-[500px]">
+    {/* Icone de filtre */}
+    <div className="flex justify-between items-center mb-4">
+      {/* Bouton Filtrer */}
+      <button 
+        className="bg-[#2B3A67] text-white p-2 rounded-md shadow-md hover:bg-[#1a2b43] flex items-center gap-2"
+        onClick={handleFilterClick}
+      >
+        <i className="fas fa-filter text-2xl"></i>
+        Filtrer
+        <i className="fas fa-chevron-down text-2xl mt-1 text-white"></i>
+      </button>
+
+      {/* Icone Date */}
+      <div className="flex items-center gap-2">
+        <i className="fas fa-calendar-alt text-2xl text-[#2B3A67]"></i>
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={handleDateChange}
+          className="p-2 border rounded-md"
+          defaultValue={new Date().toISOString().split("T")[0]}
+        />
+      </div>
+    </div>
+
+    {showFilter && (
+      <div className="border p-4 rounded-md max-h-60 overflow-y-auto bg-gray-50">
+        {loading && <p>Chargement...</p>}
+        {error && <p className="text-red-600">{error}</p>}
+        {!loading && !error && professors.length === 0 && <p>Aucun professeur trouvé</p>}
+
+        <ul>
+          {professors.map(prof => (
+            <li
+              key={prof.id}
+              className={`p-2 cursor-pointer hover:bg-[#2B3A67] hover:text-white rounded ${
+                selectedProfessor?.id === prof.id ? 'bg-[#2B3A67] text-white' : ''
+              }`}
+              onClick={() => handleProfessorSelect(prof)}
+            >
+              {prof.name}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+
+    {/* Partie tableau toujours affichée, même si pas de prof */}
+    <div className="mt-4">
+      {selectedProfessor ? (
+        <>
+          <div>
+            <strong>Professeur sélectionné : </strong> {selectedProfessor.name}
+          </div>
+
+          <table className="min-w-full table-auto border-collapse border border-gray-300 mt-6">
+            <thead>
+              <tr className="bg-gray-200">
+                <th className="border border-gray-300 px-6 py-3 text-left font-semibold text-gray-700">Date</th>
+                <th className="border border-gray-300 px-6 py-3 text-left font-semibold text-gray-700">Formation</th>
+                <th className="border border-gray-300 px-6 py-3 text-left font-semibold text-gray-700">Groupe</th>
+                <th className="border border-gray-300 px-6 py-3 text-center font-semibold text-gray-700">Début</th>
+                <th className="border border-gray-300 px-6 py-3 text-center font-semibold text-gray-700">Fin</th>
+                <th className="border border-gray-300 px-6 py-3 text-center font-semibold text-gray-700">Pause</th>
+                <th className="border border-gray-300 px-6 py-3 text-center font-semibold text-gray-700">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {coursHours.length > 0 ? (
+                coursHours.map((ch, index) => (
+                  <tr
+                    key={ch.id}
+                    className={`transition-transform duration-300 hover:scale-105 hover:shadow-lg ${
+                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                    }`}
+                  >
+                    <td className="border border-gray-300 px-6 py-3 text-left">{new Date(ch.date).toLocaleDateString()}</td>
+                    <td className="border border-gray-300 px-6 py-3 text-left">{ch.formation_name}</td>
+                    <td className="border border-gray-300 px-6 py-3 text-left">{ch.groupe_name}</td>
+                    <td className="border border-gray-300 px-6 py-3 text-center">{ch.start_time}</td>
+                    <td className="border border-gray-300 px-6 py-3 text-center">{ch.end_time ?? "-"}</td>
+                    <td className="border border-gray-300 px-6 py-3 text-center">{formatInterval(ch.pause_time)}</td>
+                    <td className="border border-gray-300 px-6 py-3 text-center">{formatInterval(ch.total_hours)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="text-center py-6 text-gray-500">
+                    Aucun cours disponible pour ce professeur.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </>
+      ) : (
+        <div className="text-center py-6 text-gray-500">
+          Veuillez sélectionner un professeur pour afficher les cours.
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
+
 
       </div>
     </div>
