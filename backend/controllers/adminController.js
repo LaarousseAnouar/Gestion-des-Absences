@@ -39,7 +39,8 @@ const addAdmin = async (req, res) => {
 // Récupérer le nom de l'administrateur
 const getAdminName = async (req, res) => {
   try {
-    const result = await client.query('SELECT nom, prenom FROM admins WHERE id = $1', [req.userId]);
+    const userId = 5;
+    const result = await client.query('SELECT nom, prenom FROM admins WHERE id = $1', [userId]);
 
     if (result.rows.length > 0) {
       res.json({ name: `${result.rows[0].prenom} ${result.rows[0].nom}` });
@@ -51,6 +52,7 @@ const getAdminName = async (req, res) => {
     res.status(500).send('Erreur lors de la récupération du nom de l\'administrateur');
   }
 };
+
 const getEmploiDuTempsGroupe = async (req, res) => {
   const { groupId } = req.params;
 

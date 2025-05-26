@@ -2,7 +2,7 @@
 
 const express = require('express');
 const multer = require('multer');
-const { addEmployee, getEmployeeCount, getDailyAbsences, getWeeklyPresence, getAllEmployees, getScheduleByEmail ,modifyEmployee ,blockEmployee ,getProfessors} = require('../controllers/employeeController'); // Assurez-vous que le contrôleur est correctement importé
+const { addEmployee, getEmployeeCount, getDailyAbsences,getDailyPresence, getWeeklyPresence,getWeeklyAbsences, getAllEmployees, getScheduleByEmail ,modifyEmployee ,blockEmployee ,getProfessors} = require('../controllers/employeeController'); // Assurez-vous que le contrôleur est correctement importé
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
@@ -18,11 +18,14 @@ router.post('/add-employee', upload.fields([
 // Route pour récupérer le nombre d'employés
 router.get('/employee-count', getEmployeeCount);
 
-// Route pour récupérer les absences de la journée
 router.get('/daily-absences', getDailyAbsences);
 
-// Route pour récupérer la présence de la semaine
+router.get('/daily-presence', getDailyPresence);
+
 router.get('/weekly-presence', getWeeklyPresence);
+
+router.get('/weekly-absences', getWeeklyAbsences);
+
 
 // Route pour récupérer tous les employés
 router.get('/employees', getAllEmployees);

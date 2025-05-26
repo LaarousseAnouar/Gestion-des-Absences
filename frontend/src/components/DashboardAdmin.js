@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom'; // Ajoutez cette ligne pour importer Link
 import axios from "axios";
 import '../index.css';  // ou './globals.css' selon le nom et emplacement
+import { Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const DashboardAdmin = () => {
   const [sectionActive, setSectionActive] = useState("statistique");
@@ -40,27 +51,31 @@ const [isDateFiltered, setIsDateFiltered] = useState(false);
 
   
   useEffect(() => {
-    const fetchAdminName = async () => {
-      try {
-        const response = await fetch('http://localhost:3000/api/admin-name', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-        const data = await response.json();
-        if (response.ok) {
-          setAdminName(data.name); // Assurez-vous que le nom est correctement assigné
-        } else {
-          console.error('Erreur lors de la récupération du nom de l\'administrateur');
-        }
-      } catch (err) {
-        console.error('Erreur lors du chargement du nom de l\'administrateur', err);
-      }
-    };
+  const fetchAdminName = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/admin-name', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          // Ajoute un header Authorization si nécessaire, ex:
+          // 'Authorization': `Bearer ${token}`,
+        },
+      });
 
-    fetchAdminName();
-  }, []);
+      if (!response.ok) {
+        console.error('Erreur lors de la récupération du nom de l\'administrateur');
+        return; // quitte la fonction si erreur
+      }
+
+      const data = await response.json();
+      setAdminName(data.name); // affecte le nom reçu
+    } catch (err) {
+      console.error('Erreur lors du chargement du nom de l\'administrateur', err);
+    }
+  };
+
+  fetchAdminName();
+}, []);
 
   useEffect(() => {
     const fetchProfessors = async () => {
@@ -243,7 +258,7 @@ const formatInterval = (interval) => {
 
     
 
-  const CarteInfo = ({ titre, apiUrl }) => {
+const CarteInfo = ({ titre, apiUrl }) => {
   const [ouvert, setOuvert] = useState(false);
   const [donnees, setDonnees] = useState(null);
   const [chargement, setChargement] = useState(false);
@@ -265,14 +280,14 @@ const formatInterval = (interval) => {
   };
 
   return (
-    <div
-      className={`
-        bg-[#4B0082] text-white rounded-lg shadow-md transition-all duration-300 overflow-hidden
-        ${hover ? 'w-64 max-h-64' : 'w-48 max-h-48'}
-      `}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
+   <div
+  className={`
+    bg-[#4B0082] text-white rounded-lg shadow-md transition-all duration-500 ease-in-out overflow-hidden
+    ${hover ? 'w-[580px] max-h-[80px]' : 'w-[420px] max-h-[420px]'}
+  `}
+  onMouseEnter={() => setHover(true)}
+  onMouseLeave={() => setHover(false)}
+>
       <div
         className="flex items-center justify-between px-4 py-3 cursor-pointer"
         onClick={basculerCarte}
@@ -296,6 +311,46 @@ const formatInterval = (interval) => {
   );
 };
 
+const dataEmployes = {
+    labels: [
+      "Nombre d'employés",
+      "Absences Journée",
+      "Présence Journée",
+      "Présence Semaine",
+      "Absences Semaine",
+    ],
+    datasets: [{
+      label: 'Employés',
+      data: [120, 5, 115, 550, 25],  // Exemples de données
+      backgroundColor: '#4B0082',
+    }],
+  };
+
+  // Données statiques d'exemple pour étudiants
+  const dataEtudiants = {
+    labels: [
+      "Absences Journée",
+      "Présence Journée",
+      "Présence Semaine",
+      "Absences Semaine",
+    ],
+    datasets: [{
+      label: 'Étudiants',
+      data: [7, 10, 9, 5],  // Exemples de données
+      backgroundColor: '#6A5ACD',
+    }],
+  };
+
+  const optionsDiagramme = {
+    responsive: true,
+    plugins: {
+      legend: { position: 'top' },
+      title: { display: true, text: 'Résumé des performances' },
+    },
+    scales: {
+      y: { beginAtZero: true },
+    },
+  };
 
   return (
     <div className="flex">
@@ -341,34 +396,68 @@ const formatInterval = (interval) => {
       </div>
 
       <div className="ml-64 p-10 w-full bg-white flex flex-col items-center">
-        <h1 className="text-5xl font-bold text-gray-800 mb-4 text-center">Vue d'ensemble</h1>
-        <p className="text-gray-600 text-lg mb-12 text-center">
-          Bienvenue, {adminName ? adminName : 'Utilisateur non trouvé'} ! Votre progression est excellente.
+
+        <h1
+        className="
+          text-5xl font-extrabold text-indigo-700 mb-6 text-center tracking-wide drop-shadow-md
+          transition-transform duration-300 ease-in-out
+          hover:scale-105 hover:text-indigo-900
+        "
+        >
+        Votre espace administrateur
+        </h1>
+        <p
+          className="
+            max-w-xl mx-auto text-center text-gray-700 text-xl leading-relaxed mb-16
+            transition-colors duration-400 ease-in-out hover:text-indigo-600
+          "
+        >
+          Bonjour, <span className="font-semibold">{adminName || 'Utilisateur non trouvé'}</span> ! Votre progression est excellente.
         </p>
 
+
+
 {sectionActive === "statistique" && (
-  <div className="flex justify-center w-full space-x-8">
-    <CarteInfo
-      titre="Nombre d'employés"
-      apiUrl="http://localhost:3000/api/employee-count"
-    />
-    <CarteInfo
-      titre="Absences de la Journée (Employés)"
-      apiUrl="http://localhost:3000/api/daily-absences?type=employees"
-    />
-    <CarteInfo
-      titre="Absences de la Journée (Étudiants)"
-      apiUrl="http://localhost:3000/api/daily-absences?type=students"
-    />
-    <CarteInfo
-      titre="Présence de la Semaine (Employés)"
-      apiUrl="http://localhost:3000/api/weekly-presence?type=employees"
-    />
-    <CarteInfo
-      titre="Présence de la Semaine (Étudiants)"
-      apiUrl="http://localhost:3000/api/weekly-presence?type=students"
-    />
+  <>
+  {/* Section Employés */}
+{/* Section Employés */}
+<section className="mb-16 bg-indigo-50 p-6 rounded-lg shadow-sm">
+  <h2 className="text-3xl font-bold text-indigo-700 mb-6 text-center">
+    Informations Employés
+  </h2>
+  <div className="flex justify-between max-w-4xl mx-auto mb-10">
+    <CarteInfo titre="Nombre d'employés" apiUrl="http://localhost:3000/api/employee-count" />
+    <CarteInfo titre="Absences de la Journée (Employés)" apiUrl="http://localhost:3000/api/daily-absences?type=employees" />
+    <CarteInfo titre="Présence de la Journée (Employés)" apiUrl="http://localhost:3000/api/daily-presence?type=employees" />
+    <CarteInfo titre="Présence de la Semaine (Employés)" apiUrl="http://localhost:3000/api/weekly-presence?type=employees" />
+    <CarteInfo titre="Absences de la Semaine (Employés)" apiUrl="http://localhost:3000/api/weekly-absences?type=employees" />
   </div>
+  <div className="max-w-4xl mx-auto px-4">
+    <Bar data={dataEmployes} options={optionsDiagramme} />
+  </div>
+</section>
+
+<hr className="border-indigo-300 my-12 mx-auto max-w-4xl" />
+
+{/* Section Étudiants */}
+<section className="bg-indigo-50 p-6 rounded-lg shadow-sm">
+  <h2 className="text-3xl font-bold text-indigo-700 mb-6 text-center">
+    Informations Étudiants
+  </h2>
+  <div className="flex justify-between max-w-4xl mx-auto mb-10">
+    <CarteInfo titre="Absences de la Journée (Étudiants)" apiUrl="http://localhost:3000/api/daily-absences?type=students" />
+    <CarteInfo titre="Présence de la Journée (Étudiants)" apiUrl="http://localhost:3000/api/daily-presence?type=students" />
+    <CarteInfo titre="Présence de la Semaine (Étudiants)" apiUrl="http://localhost:3000/api/weekly-presence?type=students" />
+    <CarteInfo titre="Absences de la Semaine (Étudiants)" apiUrl="http://localhost:3000/api/weekly-absences?type=students" />
+  </div>
+  <div className="max-w-4xl mx-auto px-4">
+    <Bar data={dataEtudiants} options={optionsDiagramme} />
+  </div>
+</section>
+
+
+</>
+
 )}
 
          

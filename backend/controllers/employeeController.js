@@ -30,57 +30,103 @@ const addEmployee = async (req, res) => {
   }
 };
 
+const tableMap = {
+  students: 'attendance_students',
+  employees: 'attendance_employees',
+};
 // Fonction pour récupérer le nombre d'employés
 const getEmployeeCount = async (req, res) => {
   try {
     const result = await client.query('SELECT COUNT(*) FROM employees');
-    res.json({ count: result.rows[0].count });
+    res.json({ count: parseInt(result.rows[0].count, 10) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Fonction pour récupérer les absences de la journée
 const getDailyAbsences = async (req, res) => {
-  const { type } = req.query; // 'students' ou 'employees'
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const { type } = req.query;
+  const tableName = tableMap[type];
+  if (!tableName) return res.status(400).json({ error: 'Type must be students or employees' });
 
-  // Choix dynamique de la table
-  let tableName;
-  if (type === 'students') tableName = 'attendance_students';
-  else if (type === 'employees') tableName = 'attendance_employees';
-  else return res.status(400).json({ error: 'Type must be students or employees' });
+  const today = new Date().toISOString().split('T')[0];
 
   try {
     const result = await client.query(
-      `SELECT COUNT(*) FROM ${tableName} WHERE date = $1 AND status = $2`,
-      [today, 'absent']
+      `SELECT COUNT(*) FROM ${tableName} WHERE date = $1 AND status = 'absent'`,
+      [today]
     );
-    res.json({ count: result.rows[0].count });
+    res.json({ count: parseInt(result.rows[0].count, 10) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const getDailyPresence = async (req, res) => {
+  const { type } = req.query;
+  const tableName = tableMap[type];
+  if (!tableName) return res.status(400).json({ error: 'Type must be students or employees' });
+
+  const today = new Date().toISOString().split('T')[0];
+
+  try {
+    const result = await client.query(
+      `SELECT COUNT(*) FROM ${tableName} WHERE date = $1 AND status = 'present'`,
+      [today]
+    );
+    res.json({ count: parseInt(result.rows[0].count, 10) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
 const getWeeklyPresence = async (req, res) => {
-  const { type } = req.query; // 'students' ou 'employees'
-  const now = new Date();
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay()); // dimanche début semaine
-  const endOfWeek = new Date(now);
-  endOfWeek.setDate(now.getDate() - now.getDay() + 6); // samedi fin semaine
+  const { type } = req.query;
+  const tableName = tableMap[type];
+  if (!tableName) return res.status(400).json({ error: 'Type must be students or employees' });
 
-  let tableName;
-  if (type === 'students') tableName = 'attendance_students';
-  else if (type === 'employees') tableName = 'attendance_employees';
-  else return res.status(400).json({ error: 'Type must be students or employees' });
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - dayOfWeek);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+  const startStr = startOfWeek.toISOString().split('T')[0];
+  const endStr = endOfWeek.toISOString().split('T')[0];
 
   try {
     const result = await client.query(
-      `SELECT COUNT(*) FROM ${tableName} WHERE date BETWEEN $1 AND $2 AND status = $3`,
-      [startOfWeek.toISOString().split('T')[0], endOfWeek.toISOString().split('T')[0], 'present']
+      `SELECT COUNT(*) FROM ${tableName} WHERE date BETWEEN $1 AND $2 AND status = 'present'`,
+      [startStr, endStr]
     );
-    res.json({ count: result.rows[0].count });
+    res.json({ count: parseInt(result.rows[0].count, 10) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const getWeeklyAbsences = async (req, res) => {
+  const { type } = req.query;
+  const tableName = tableMap[type];
+  if (!tableName) return res.status(400).json({ error: 'Type must be students or employees' });
+
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - dayOfWeek);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+  const startStr = startOfWeek.toISOString().split('T')[0];
+  const endStr = endOfWeek.toISOString().split('T')[0];
+
+  try {
+    const result = await client.query(
+      `SELECT COUNT(*) FROM ${tableName} WHERE date BETWEEN $1 AND $2 AND status = 'absent'`,
+      [startStr, endStr]
+    );
+    res.json({ count: parseInt(result.rows[0].count, 10) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -222,7 +268,9 @@ module.exports = {
   addEmployee,
   getEmployeeCount,
   getDailyAbsences,
+  getDailyPresence,
   getWeeklyPresence,
+  getWeeklyAbsences,
   getAllEmployees,
   getScheduleByEmail,
   modifyEmployee,
