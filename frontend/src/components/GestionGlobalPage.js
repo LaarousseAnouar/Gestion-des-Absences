@@ -4,6 +4,9 @@ import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";  // Importer le style du calendrier
 import AttendanceStatusCell from "./AttendanceStatusCell"; // Chemin selon ton organisation
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 
 const GestionGlobalPage = () => {
   const today = new Date().toISOString().split('T')[0];  // Date d'aujourd'hui
@@ -55,6 +58,9 @@ const GestionGlobalPage = () => {
     email: '',
     fonction: '',
   });
+
+  const [selectedFormationId, setSelectedFormationId] = React.useState("");
+  
   // Fetch Employees or Students based on selected tab
   useEffect(() => {
     const fetchData = async () => {
@@ -398,24 +404,28 @@ const openModalForEmployee = (employee) => {
   const handleSubmitAddUser = async (e) => {
     e.preventDefault();
     const formData = new FormData();
+
     formData.append("nom", nom);
     formData.append("prenom", prenom);
     formData.append("email", email);
-    if (selectedTab === "Employee") {
+
+    if (userType === "employee") {
       formData.append("fonction", fonction);
-      formData.append("password", password);
+      formData.append("password", password); // <-- ajouté ici
+      if (selectedFormationId) {
+        formData.append("formation_id", selectedFormationId);
+      }
       if (emploiDuTempsFile) {
         formData.append("emploi_du_temps", emploiDuTempsFile);
       }
-      if (fonction === "professor" && selectedFormation) {
-        formData.append("formation_id", selectedFormation);
-      }
-  } else {
+    } else {
+      // Étudiant
       formData.append("groupe_id", groupeId);
       formData.append("telephone", telephone);
       formData.append("date_naissance", dateNaissance);
       formData.append("status", status);
     }
+
     if (image) {
       formData.append(userType === "employee" ? "image_employee" : "image_student", image);
     }
@@ -426,20 +436,23 @@ const openModalForEmployee = (employee) => {
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
-      console.log(res.data);
-      // Réinitialiser le formulaire après ajout
-      setNom("");
-      setPrenom("");
-      setEmail("");
-      setFonction("");
-      setGroupeId("");
-      setTelephone("");
-      setDateNaissance("");
-      setStatus("");
-      setImage(null);
-      setSelectedFormation(""); // Reset formation selection
+
+      if (res.status === 201) {
+        toast.success(`${userType === "employee" ? "Employé" : "Étudiant"} ajouté avec succès !`);
+      } else {
+        toast.error("Erreur lors de l'ajout.");
+      }
+
+      // Réinitialisation du formulaire
+      setNom(""); setPrenom(""); setEmail("");
+      setFonction(""); setGroupeId(""); setTelephone("");
+      setDateNaissance(""); setStatus(""); setImage(null);
+      setSelectedFormation(""); setSelectedFormationId("");
+      setPassword("");  // Pense à réinitialiser aussi le mot de passe
+      setEmploiDuTempsFile(null);
     } catch (err) {
       console.error("Erreur lors de l'ajout:", err);
+      toast.error("Une erreur est survenue lors de l'ajout.");
     }
   };
 
@@ -1113,6 +1126,7 @@ const openModalForEmployee = (employee) => {
     </form>
   </div>
 )}
+
 
 
 

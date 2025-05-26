@@ -4,6 +4,8 @@ import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";  // Importer le style du calendrier
 import AttendanceStatusCell from "./AttendanceStatusCell"; // Chemin selon ton organisation
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const DashboardDirectionPedagogique = () => {
   const today = new Date().toISOString().split('T')[0];  // Date d'aujourd'hui
@@ -53,6 +55,11 @@ const DashboardDirectionPedagogique = () => {
     email: '',
     fonction: '',
   });
+
+  const [password, setPassword] = useState("");
+  const [emploiDuTempsFile, setEmploiDuTempsFile] = useState(null);
+  const [selectedFormationId, setSelectedFormationId] = React.useState("");
+
   // Fetch Employees or Students based on selected tab
   useEffect(() => {
     const fetchData = async () => {
@@ -396,17 +403,28 @@ const openModalForEmployee = (employee) => {
   const handleSubmitAddUser = async (e) => {
     e.preventDefault();
     const formData = new FormData();
+
     formData.append("nom", nom);
     formData.append("prenom", prenom);
     formData.append("email", email);
-    if (selectedTab === "Employee") {
+
+    if (userType === "employee") {
       formData.append("fonction", fonction);
+      formData.append("password", password); // <-- ajouté ici
+      if (selectedFormationId) {
+        formData.append("formation_id", selectedFormationId);
+      }
+      if (emploiDuTempsFile) {
+        formData.append("emploi_du_temps", emploiDuTempsFile);
+      }
     } else {
+      // Étudiant
       formData.append("groupe_id", groupeId);
       formData.append("telephone", telephone);
       formData.append("date_naissance", dateNaissance);
       formData.append("status", status);
     }
+
     if (image) {
       formData.append(userType === "employee" ? "image_employee" : "image_student", image);
     }
@@ -417,22 +435,26 @@ const openModalForEmployee = (employee) => {
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
-      console.log(res.data);
-      // Réinitialiser le formulaire après ajout
-      setNom("");
-      setPrenom("");
-      setEmail("");
-      setFonction("");
-      setGroupeId("");
-      setTelephone("");
-      setDateNaissance("");
-      setStatus("");
-      setImage(null);
-      setSelectedFormation(""); // Reset formation selection
+
+      if (res.status === 201) {
+        toast.success(`${userType === "employee" ? "Employé" : "Étudiant"} ajouté avec succès !`);
+      } else {
+        toast.error("Erreur lors de l'ajout.");
+      }
+
+      // Réinitialisation du formulaire
+      setNom(""); setPrenom(""); setEmail("");
+      setFonction(""); setGroupeId(""); setTelephone("");
+      setDateNaissance(""); setStatus(""); setImage(null);
+      setSelectedFormation(""); setSelectedFormationId("");
+      setPassword("");  // Pense à réinitialiser aussi le mot de passe
+      setEmploiDuTempsFile(null);
     } catch (err) {
       console.error("Erreur lors de l'ajout:", err);
+      toast.error("Une erreur est survenue lors de l'ajout.");
     }
   };
+
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -878,7 +900,7 @@ const openModalForEmployee = (employee) => {
       Ajouter un {userType === "employee" ? "Employé" : "Étudiant"}
     </h2>
     <form onSubmit={handleSubmitAddUser}>
-      {/* Sélectionner le type (Employé ou Étudiant) */}
+      {/* Type d'utilisateur */}
       <div className="mb-4">
         <label htmlFor="userType" className="block text-gray-600">Type d'utilisateur</label>
         <select
@@ -892,52 +914,12 @@ const openModalForEmployee = (employee) => {
         </select>
       </div>
 
-      {/* Sélectionner la formation */}
-      {userType === "student" && (
-        <div className="mb-4">
-          <label htmlFor="selectedFormation" className="block text-gray-600">Formation</label>
-          <select
-            id="selectedFormation"
-            value={selectedFormation}
-            onChange={(e) => setSelectedFormation(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md"
-          >
-            <option value="">Choisir une formation</option>
-            {formations.map((formation, index) => (
-              <option key={index} value={formation.nom}>
-                {formation.nom}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Sélectionner le groupe */}
-      {userType === "student" && selectedFormation && (
-        <div className="mb-4">
-          <label htmlFor="groupeId" className="block text-gray-600">Groupe</label>
-          <select
-            id="groupeId"
-            value={groupeId}
-            onChange={(e) => setGroupeId(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md"
-          >
-            <option value="">Choisir un groupe</option>
-            {groups.map((group, index) => (
-              <option key={index} value={group.id}>
-                {group.nom}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
       {/* Nom */}
       <div className="mb-4">
         <label htmlFor="nom" className="block text-gray-600">Nom</label>
         <input
           type="text"
-          id="name"
+          id="nom"
           value={nom}
           onChange={(e) => setNom(e.target.value)}
           required
@@ -970,6 +952,113 @@ const openModalForEmployee = (employee) => {
           className="w-full p-2 border border-gray-300 rounded-md"
         />
       </div>
+
+      {/* Mot de passe (Employee uniquement) */}
+      {userType === "employee" && (
+        <div className="mb-4">
+          <label htmlFor="password" className="block text-gray-600">Mot de passe</label>
+          <input
+            type="password"
+            id="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full p-2 border border-gray-300 rounded-md"
+          />
+        </div>
+      )}
+
+      {/* Fonction (Employee uniquement) */}
+      {userType === "employee" && (
+        <div className="mb-4">
+          <label htmlFor="fonction" className="block text-gray-600">Fonction</label>
+          <select
+            id="fonction"
+            value={fonction}
+            onChange={(e) => setFonction(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md"
+            required
+          >
+            <option value="">Choisir une fonction</option>
+            <option value="professor">Professeur</option>
+            <option value="Direction Pédagogique">Direction Pédagogique</option>
+          </select>
+        </div>
+      )}
+
+      {/* Formation (uniquement si professeur) */}
+      {userType === "employee" && fonction === "professor" && (
+        <div className="mb-4">
+          <label htmlFor="selectedFormation" className="block text-gray-600">Formation</label>
+          <select
+            id="selectedFormation"
+            value={selectedFormation}
+            onChange={(e) => setSelectedFormation(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md"
+            required
+          >
+            <option value="">Choisir une formation</option>
+            {formations.map((formation) => (
+              <option key={formation.id} value={formation.id}>
+                {formation.nom}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Fichier emploi du temps (Employee uniquement) */}
+      {userType === "employee" && fonction === "professor" && (
+      <div className="mb-4">
+        <label htmlFor="emploi_du_temps" className="block text-gray-600">Emploi du Temps</label>
+        <input
+          type="file"
+          id="emploi_du_temps"
+          onChange={(e) => setEmploiDuTempsFile(e.target.files[0])}
+          className="w-full p-2 border border-gray-300 rounded-md"
+        />
+      </div>
+    )}
+
+
+      {/* Formation + Groupe (Student uniquement) */}
+      {userType === "student" && (
+        <>
+          <div className="mb-4">
+            <label htmlFor="selectedFormation" className="block text-gray-600">Formation</label>
+            <select
+              id="selectedFormation"
+              value={selectedFormation}
+              onChange={(e) => setSelectedFormation(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            >
+              <option value="">Choisir une formation</option>
+              {formations.map((formation, index) => (
+                <option key={index} value={formation.nom}>
+                  {formation.nom}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mb-4">
+            <label htmlFor="groupeId" className="block text-gray-600">Groupe</label>
+            <select
+              id="groupeId"
+              value={groupeId}
+              onChange={(e) => setGroupeId(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            >
+              <option value="">Choisir un groupe</option>
+              {groups.map((group, index) => (
+                <option key={index} value={group.id}>
+                  {group.nom}
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
+      )}
 
       {/* Téléphone */}
       {userType === "student" && (
@@ -1027,7 +1116,7 @@ const openModalForEmployee = (employee) => {
         />
       </div>
 
-      {/* Bouton Ajouter avec un peu plus de marge en bas */}
+      {/* Bouton d'envoi */}
       <button
         type="submit"
         className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 mb-6"
@@ -1037,6 +1126,7 @@ const openModalForEmployee = (employee) => {
     </form>
   </div>
 )}
+
 
 
       </div>

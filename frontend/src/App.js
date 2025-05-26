@@ -1,26 +1,29 @@
 // frontend/App.js
-import React, { useEffect, useState } from "react";
-import { Route, Routes, BrowserRouter as Router, useNavigate } from "react-router-dom";
-import LoginPage from "./components/LoginPage";  // Page de connexion
-import DashboardAdmin from "./components/DashboardAdmin"; // Page du tableau de bord Administrateur
-import DashboardProf from "./components/DashboardProf"; // Page du tableau de bord Professeur
-import DashboardDirectionPedagogique from "./components/DashboardDirectionPedagogique"; // Page du tableau de bord Direction Pédagogique
-import { isAuthenticated } from "./services/authService"; // Service pour vérifier l'authentification
-import GestionGlobalPage from "./components/GestionGlobalPage"; // Page Gestion Global
+import React from "react";
+import { Route, Routes, useNavigate } from "react-router-dom";
+import LoginPage from "./components/LoginPage";
+import DashboardAdmin from "./components/DashboardAdmin";
+import DashboardProf from "./components/DashboardProf";
+import DashboardDirectionPedagogique from "./components/DashboardDirectionPedagogique";
+import GestionGlobalPage from "./components/GestionGlobalPage";
+import { isAuthenticated } from "./services/authService";
+
+// Import react-toastify
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const App = () => {
-  // const user = isAuthenticated(); // Récupérer l'utilisateur depuis le localStorage
   const navigate = useNavigate();
-  const user = isAuthenticated()
-  
+  const user = isAuthenticated();
+
   const renderDashboard = () => {
     if (!user) {
       navigate("/");
-      return
+      return;
     }
 
-    console.log('User', user)
-    
+    console.log("User", user);
+
     switch (user.role) {
       case "admin":
         return <DashboardAdmin />;
@@ -34,16 +37,19 @@ const App = () => {
   };
 
   return (
-    <div>
+    <>
+      {/* ToastContainer placé ici, au sommet de l'app */}
+      <ToastContainer position="top-right" autoClose={6000} hideProgressBar />
+
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/dashboard-admin" element={renderDashboard()} />
         <Route path="/dashboard-prof" element={renderDashboard()} />
         <Route path="/dashboard-pedagogique" element={renderDashboard()} />
-        <Route path="/gestion-global" element={<GestionGlobalPage />} />  
+        <Route path="/gestion-global" element={<GestionGlobalPage />} />
         <Route path="/" element={<LoginPage />} />
       </Routes>
-    </div>
+    </>
   );
 };
 
