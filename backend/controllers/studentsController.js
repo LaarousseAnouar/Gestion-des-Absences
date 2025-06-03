@@ -82,33 +82,42 @@ const blockStudent = async (req, res) => {
   }
 };
 
-// Modifier les informations d'un étudiant
 const modifyStudent = async (req, res) => {
+  console.log('Request params:', req.params);
+  console.log('Request body:', req.body);
+  console.log('Request file:', req.file);
   const { id } = req.params;
   const { nom, prenom, email, telephone, date_naissance } = req.body;
-  const imageStudent = req.file ? req.file.buffer : null;  // If an image is provided
-
-  if (!nom || !prenom || !email) {
-    return res.status(400).json({ error: 'Nom, prénom, et email sont requis' });
-  }
+  const imageStudent = req.file ? req.file.buffer : null;
 
   try {
-    // Update the student's details, including image if provided
+    // Récupérer l'étudiant actuel
+    const studentResult = await client.query('SELECT * FROM students WHERE id = $1', [id]);
+    if (studentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Étudiant non trouvé' });
+    }
+    const student = studentResult.rows[0];
+
+    // Mettre à jour seulement les champs envoyés (ou garder l'existant)
+    const updatedNom = nom || student.nom;
+    const updatedPrenom = prenom || student.prenom;
+    const updatedEmail = email || student.email;
+    const updatedTelephone = telephone || student.telephone;
+    const updatedDateNaissance = date_naissance || student.date_naissance;
+    const updatedImage = imageStudent || student.image_student;
+
     const result = await client.query(
       `UPDATE students SET 
         nom = $1, prenom = $2, email = $3, telephone = $4, 
         date_naissance = $5, image_student = $6, updated_at = CURRENT_TIMESTAMP 
       WHERE id = $7 RETURNING *`,
       [
-        nom, prenom, email, telephone, date_naissance, imageStudent, id
+        updatedNom, updatedPrenom, updatedEmail, updatedTelephone, updatedDateNaissance, updatedImage, id
       ]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Étudiant non trouvé' });
-    }
-
     res.json({ message: 'Informations de l\'étudiant mises à jour avec succès', student: result.rows[0] });
+
   } catch (err) {
     console.error('Erreur lors de la modification de l\'étudiant :', err);
     res.status(500).json({ error: 'Erreur lors de la modification de l\'étudiant.' });

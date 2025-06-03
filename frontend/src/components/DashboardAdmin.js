@@ -48,8 +48,15 @@ const DashboardAdmin = () => {
   const [coursHours, setCoursHours] = useState([]);
 const [isDateFiltered, setIsDateFiltered] = useState(false);
 
+const [dataEmployes, setDataEmployes] = useState(null);
+  const [dataEtudiants, setDataEtudiants] = useState(null);
+  const fullText = `Bonjour, ${adminName || 'Utilisateur non trouvé'} ! Votre progression est excellente.`;
+  const [displayedText, setDisplayedText] = useState('');
+  const [index, setIndex] = useState(0);
+  const [data, setData] = useState(null);
+  const [dataFormationsGroupes, setDataFormationsGroupes] = useState(null);
 
-  
+
   useEffect(() => {
   const fetchAdminName = async () => {
     try {
@@ -171,6 +178,106 @@ useEffect(() => {
 }, [selectedProfessor, selectedDate, isDateFiltered]);
 
 
+useEffect(() => {
+    // Fonction pour récupérer les données employés
+    const fetchDataEmployes = async () => {
+      try {
+        // Récupérer chaque valeur via ton API (5 appels ici, à optimiser si possible)
+        const responses = await Promise.all([
+          fetch('http://localhost:3000/api/employee-count'),
+          fetch('http://localhost:3000/api/daily-absences?type=employees'),
+          fetch('http://localhost:3000/api/daily-presence?type=employees'),
+          fetch('http://localhost:3000/api/weekly-presence?type=employees'),
+          fetch('http://localhost:3000/api/weekly-absences?type=employees'),
+        ]);
+        const results = await Promise.all(responses.map(r => r.json()));
+
+        setDataEmployes({
+          labels: [
+            "Nombre d'employés",
+            "Absences Journée",
+            "Présence Journée",
+            "Présence Semaine",
+            "Absences Semaine",
+          ],
+          datasets: [{
+            label: 'Employés',
+            data: results.map(res => Number(res.count)),
+            backgroundColor: '#4B0082',
+          }],
+        });
+      } catch (error) {
+        console.error('Erreur récupération données employés :', error);
+      }
+    };
+
+    // Fonction pour récupérer les données étudiants
+    const fetchDataEtudiants = async () => {
+      try {
+        const responses = await Promise.all([
+          fetch('http://localhost:3000/api/daily-absences?type=students'),
+          fetch('http://localhost:3000/api/daily-presence?type=students'),
+          fetch('http://localhost:3000/api/weekly-presence?type=students'),
+          fetch('http://localhost:3000/api/weekly-absences?type=students'),
+        ]);
+        const results = await Promise.all(responses.map(r => r.json()));
+
+        setDataEtudiants({
+          labels: [
+            "Absences Journée",
+            "Présence Journée",
+            "Présence Semaine",
+            "Absences Semaine",
+          ],
+          datasets: [{
+            label: 'Étudiants',
+            data: results.map(res => Number(res.count)),
+            backgroundColor: '#6A5ACD',
+          }],
+        });
+      } catch (error) {
+        console.error('Erreur récupération données étudiants :', error);
+      }
+    };
+
+    fetchDataEmployes();
+    fetchDataEtudiants();
+  }, []);
+
+  useEffect(() => {
+    async function fetchFormationsGroupes() {
+      try {
+        const response = await fetch('http://localhost:3000/api/formations-groupes-etudiants');
+        const formationsData = await response.json();
+
+        const formations = Object.keys(formationsData);
+        const groupesUniques = [
+          ...new Set(
+            Object.values(formationsData).flat().map(g => g.groupe)
+          )
+        ];
+
+        const datasets = groupesUniques.map((groupe, index) => ({
+          label: groupe,
+          data: formations.map(formation => {
+            const groupeData = formationsData[formation].find(g => g.groupe === groupe);
+            return groupeData ? groupeData.nombre_etudiants : 0;
+          }),
+          backgroundColor: `hsl(${(index * 60) % 360}, 70%, 50%)`
+        }));
+
+        setDataFormationsGroupes({
+          labels: formations,
+          datasets: datasets
+        });
+      } catch (error) {
+        console.error('Erreur chargement données formations/groupes :', error);
+      }
+    }
+
+    fetchFormationsGroupes();
+  }, []);
+  
   // Function to toggle visibility of courses
   const handleFilterClick = () => {
     setShowFilter(prev => !prev);
@@ -311,35 +418,6 @@ const CarteInfo = ({ titre, apiUrl }) => {
   );
 };
 
-const dataEmployes = {
-    labels: [
-      "Nombre d'employés",
-      "Absences Journée",
-      "Présence Journée",
-      "Présence Semaine",
-      "Absences Semaine",
-    ],
-    datasets: [{
-      label: 'Employés',
-      data: [120, 5, 115, 550, 25],  // Exemples de données
-      backgroundColor: '#4B0082',
-    }],
-  };
-
-  // Données statiques d'exemple pour étudiants
-  const dataEtudiants = {
-    labels: [
-      "Absences Journée",
-      "Présence Journée",
-      "Présence Semaine",
-      "Absences Semaine",
-    ],
-    datasets: [{
-      label: 'Étudiants',
-      data: [7, 10, 9, 5],  // Exemples de données
-      backgroundColor: '#6A5ACD',
-    }],
-  };
 
   const optionsDiagramme = {
     responsive: true,
@@ -347,9 +425,24 @@ const dataEmployes = {
       legend: { position: 'top' },
       title: { display: true, text: 'Résumé des performances' },
     },
-    scales: {
-      y: { beginAtZero: true },
+    scales: { y: { beginAtZero: true } },
+  };
+
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: { position: 'top' },
+      title: { display: true, text: "Nombre d'étudiants par formation et groupe" }
     },
+    scales: {
+      x: { stacked: false },
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1,
+        }
+      }
+    }
   };
 
   return (
@@ -420,43 +513,74 @@ const dataEmployes = {
 {sectionActive === "statistique" && (
   <>
   {/* Section Employés */}
-{/* Section Employés */}
-<section className="mb-16 bg-indigo-50 p-6 rounded-lg shadow-sm">
-  <h2 className="text-3xl font-bold text-indigo-700 mb-6 text-center">
-    Informations Employés
-  </h2>
-  <div className="flex justify-between max-w-4xl mx-auto mb-10">
-    <CarteInfo titre="Nombre d'employés" apiUrl="http://localhost:3000/api/employee-count" />
-    <CarteInfo titre="Absences de la Journée (Employés)" apiUrl="http://localhost:3000/api/daily-absences?type=employees" />
-    <CarteInfo titre="Présence de la Journée (Employés)" apiUrl="http://localhost:3000/api/daily-presence?type=employees" />
-    <CarteInfo titre="Présence de la Semaine (Employés)" apiUrl="http://localhost:3000/api/weekly-presence?type=employees" />
-    <CarteInfo titre="Absences de la Semaine (Employés)" apiUrl="http://localhost:3000/api/weekly-absences?type=employees" />
-  </div>
-  <div className="max-w-4xl mx-auto px-4">
-    <Bar data={dataEmployes} options={optionsDiagramme} />
+  <section className="mb-16 bg-indigo-50 p-6 rounded-lg shadow-sm">
+    <h2 className="text-3xl font-bold text-indigo-700 mb-6 text-center">
+      Informations Employés
+    </h2>
+    <div className="flex gap-x-8 max-w-6xl mx-auto mb-10">
+      <CarteInfo titre="Nombre d'employés" apiUrl="http://localhost:3000/api/employee-count" />
+      <CarteInfo titre="Absences de la Journée (Employés)" apiUrl="http://localhost:3000/api/daily-absences?type=employees" />
+      <CarteInfo titre="Présence de la Journée (Employés)" apiUrl="http://localhost:3000/api/daily-presence?type=employees" />
+      <CarteInfo titre="Présence de la Semaine (Employés)" apiUrl="http://localhost:3000/api/weekly-presence?type=employees" />
+      <CarteInfo titre="Absences de la Semaine (Employés)" apiUrl="http://localhost:3000/api/weekly-absences?type=employees" />
+    </div>
+    <div className="max-w-4xl mx-auto px-4">
+      {dataEmployes ? (
+        <Bar data={dataEmployes} options={optionsDiagramme} />
+      ) : (
+        <p className="text-center text-gray-500">Chargement des données employés...</p>
+      )}
+    </div>
+  </section>
+
+  <hr className="border-indigo-300 my-12 mx-auto max-w-4xl" />
+
+  {/* Section Étudiants */}
+  <section className="bg-indigo-50 p-6 rounded-lg shadow-sm">
+    <h2 className="text-3xl font-bold text-indigo-700 mb-6 text-center">
+      Informations Étudiants
+    </h2>
+    <div className="flex gap-x-8 max-w-6xl mx-auto mb-10">
+      <CarteInfo titre="Absences de la Journée (Étudiants)" apiUrl="http://localhost:3000/api/daily-absences?type=students" />
+      <CarteInfo titre="Présence de la Journée (Étudiants)" apiUrl="http://localhost:3000/api/daily-presence?type=students" />
+      <CarteInfo titre="Présence de la Semaine (Étudiants)" apiUrl="http://localhost:3000/api/weekly-presence?type=students" />
+      <CarteInfo titre="Absences de la Semaine (Étudiants)" apiUrl="http://localhost:3000/api/weekly-absences?type=students" />
+    </div>
+    <div className="max-w-4xl mx-auto px-4">
+      {dataEtudiants ? (
+        <Bar data={dataEtudiants} options={optionsDiagramme} />
+      ) : (
+        <p className="text-center text-gray-500">Chargement des données étudiants...</p>
+      )}
+    </div>
+  </section>
+
+  <hr className="border-indigo-300 my-12 mx-auto max-w-4xl" />
+
+  {/* Section Formations et Groupes */}
+  <section className="bg-indigo-50 p-6 rounded-lg shadow-sm mb-16">
+  <div
+    className="mx-auto px-4"
+    style={{ maxWidth: '1160px', minWidth: '1160px' }} // force largeur fixe
+  >
+    <h2 className="text-3xl font-bold text-indigo-700 mb-6 text-center">
+      Répartition des étudiants par formation et groupe
+    </h2>
+
+    {dataFormationsGroupes ? (
+      <Bar data={dataFormationsGroupes} options={optionsDiagramme} />
+    ) : (
+      <p className="text-center text-gray-500">Chargement des données formations et groupes...</p>
+    )}
   </div>
 </section>
 
-<hr className="border-indigo-300 my-12 mx-auto max-w-4xl" />
 
-{/* Section Étudiants */}
-<section className="bg-indigo-50 p-6 rounded-lg shadow-sm">
-  <h2 className="text-3xl font-bold text-indigo-700 mb-6 text-center">
-    Informations Étudiants
-  </h2>
-  <div className="flex justify-between max-w-4xl mx-auto mb-10">
-    <CarteInfo titre="Absences de la Journée (Étudiants)" apiUrl="http://localhost:3000/api/daily-absences?type=students" />
-    <CarteInfo titre="Présence de la Journée (Étudiants)" apiUrl="http://localhost:3000/api/daily-presence?type=students" />
-    <CarteInfo titre="Présence de la Semaine (Étudiants)" apiUrl="http://localhost:3000/api/weekly-presence?type=students" />
-    <CarteInfo titre="Absences de la Semaine (Étudiants)" apiUrl="http://localhost:3000/api/weekly-absences?type=students" />
-  </div>
-  <div className="max-w-4xl mx-auto px-4">
-    <Bar data={dataEtudiants} options={optionsDiagramme} />
-  </div>
-</section>
+
 
 
 </>
+
 
 )}
 

@@ -39,7 +39,7 @@ const AttendanceStatusCell = ({ id, session, currentStatus, date, type, onUpdate
       autoFocus
       className="rounded px-1 text-sm bg-white text-gray-900 border border-gray-300"
     >
-      {["present", "absent" ,"Aucune présence"].map(status => (
+      {["Aucune présence","present", "absent","absence justifiée"].map(status => (
         <option key={status} value={status}>
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </option>

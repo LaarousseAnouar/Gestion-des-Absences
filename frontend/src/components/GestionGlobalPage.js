@@ -236,9 +236,11 @@ const onUpdate = (id, session, newStatus) => {
   if (normalizedStatus === "absent") {
     return "bg-red-500 text-white";  // rouge pour absent
   }
+  if (normalizedStatus === "absence justifiée") {
+    return "bg-blue-500 text-white";  // bleu pour absence justifiée
+  }
   return "bg-gray-300 text-gray-700";  // gris par défaut
 };
-
 
 
   // Avatar component
@@ -315,31 +317,29 @@ const openModalForEmployee = (employee) => {
   };
                                                                 
   const handleModifyStudent = async () => {
-    const formData = new FormData();
-    formData.append("nom", newStudentData.nom);
-    formData.append("prenom", newStudentData.prenom);
-    formData.append("email", newStudentData.email);
-    formData.append("telephone", newStudentData.telephone);
-    formData.append("date_naissance", newStudentData.date_naissance);
-    formData.append("status", newStatus);
-    
-    if (selectedImage) {
-      formData.append("image_student", selectedImage);
-    }
-  
     try {
-      await axios.patch(`http://localhost:3000/api/students/${selectedStudent.id}`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      const formData = new FormData();
+
+      // Ajouter uniquement les champs qui ont une valeur non vide et non "undefined"
+      Object.entries(newStudentData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== 'undefined' && value !== '') {
+          formData.append(key, value);
+        }
       });
+
+      if (selectedImage) {
+        formData.append('image_student', selectedImage);
+      }
+
+      await axios.patch(`http://localhost:3000/api/students/${selectedStudent.id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
       alert('Student data updated successfully');
       closeModal();
     } catch (err) {
       console.error('Error updating student data', err);
-      //alert('Error updating student data');
-      alert('Student data updated successfully');
-
+      alert('Error updating student data');
     }
   };
   

@@ -235,6 +235,9 @@ const onUpdate = (id, session, newStatus) => {
   if (normalizedStatus === "absent") {
     return "bg-red-500 text-white";  // rouge pour absent
   }
+  if (normalizedStatus === "absence justifiée") {
+    return "bg-blue-500 text-white";  // bleu pour absence justifiée
+  }
   return "bg-gray-300 text-gray-700";  // gris par défaut
 };
 

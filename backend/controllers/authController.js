@@ -6,11 +6,9 @@ const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Vérification des administrateurs dans la table 'admins'
     let result = await client.query('SELECT * FROM admins WHERE email = $1', [email]);
-
+    
     if (result.rows.length === 0) {
-      // Si l'email n'est pas trouvé dans les admins, vérifier dans les employés
       result = await client.query('SELECT * FROM employees WHERE email = $1', [email]);
     }
 
@@ -19,18 +17,17 @@ const login = async (req, res) => {
     }
 
     const user = result.rows[0];
-    const isMatch = await bcrypt.compare(password, user.password);  // Vérification du mot de passe
+    const isMatch = await bcrypt.compare(password, user.password);  
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Email ou mot de passe incorrect' });
     }
 
-    const role = user.fonction;  // 'fonction' correspond au rôle : admin, prof, direction pédagogique
-
+    const role = user.fonction; 
     return res.status(200).json({
       success: true,
       data: {
         email: user.email,
-        role: role,  // Le rôle de l'utilisateur (admin, prof, direction pédagogique)
+        role: role,
       }
     });
   } catch (error) {
