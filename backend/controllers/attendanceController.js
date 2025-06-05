@@ -2,41 +2,38 @@ const client = require('../config/db');
 
 // Fonction pour récupérer le statut de présence d'un étudiant/employé pour une date donnée et session (matin/soir)
 const getAttendanceStatus = async (req, res) => {
-  const { id, date, type, session } = req.query; // On ajoute session dans la query
+  const { id, date, type, session } = req.query;
 
   if (!id || !date || !type || !session) {
     return res.status(400).json({ error: "id, date, type, et session sont requis." });
   }
 
-  // Validate the 'type' value to prevent SQL injection
   const validTypes = ['employee', 'student'];
-  if (!validTypes.includes(type)) {
+  const typeLower = type.toLowerCase();
+
+  if (!validTypes.includes(typeLower)) {
     return res.status(400).json({ error: "Type invalide. Utilisez 'employee' ou 'student'." });
   }
 
-  // Validate session value
   const validSessions = ['matin', 'soir'];
   if (!validSessions.includes(session)) {
     return res.status(400).json({ error: "Session invalide. Utilisez 'matin' ou 'soir'." });
   }
 
-  // Determine the table based on the type
-  const table = type === 'employee' ? 'attendance_employees' : 'attendance_students';
+  const table = typeLower === 'employee' ? 'attendance_employees' : 'attendance_students';
+  const column = typeLower === 'employee' ? 'employee_id' : 'student_id';
 
   try {
-    // Query the database for the status filtering by session
     const result = await client.query(`
       SELECT status
       FROM ${table}
-      WHERE ${type}_id = $1 AND date = $2 AND session = $3
+      WHERE ${column} = $1 AND date = $2 AND session = $3
     `, [id, date, session]);
 
-    // If no attendance is found
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Aucune présence trouvée pour cette date et session" });
     }
 
-    // Return the attendance status (present/absent)
     res.json({ status: result.rows[0].status });
   } catch (err) {
     console.error("Erreur lors de la récupération de la présence :", err);

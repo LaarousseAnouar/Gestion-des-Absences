@@ -9,7 +9,7 @@ const AttendanceStatusCell = ({ id, session, currentStatus, date, type, onUpdate
   const handleChange = async (e) => {
     const selectedStatus = e.target.value;
     setNewStatus(selectedStatus);
-
+    
     try {
       // Mise à jour du statut dans la base de données
       await axios.patch("http://localhost:3000/api/attendance", {

@@ -7,6 +7,7 @@ import AttendanceStatusCell from "./AttendanceStatusCell"; // Chemin selon ton o
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+
 const DashboardDirectionPedagogique = () => {
   const today = new Date().toISOString().split('T')[0];  // Date d'aujourd'hui
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);  // Default to today's date
@@ -20,6 +21,9 @@ const DashboardDirectionPedagogique = () => {
   const [selectedGroup, setSelectedGroup] = useState("");  // Groupe sélectionné
  // const [selectedDate, setSelectedDate] = useState(today);
   const [attendanceData, setAttendanceData] = useState({});
+  const [attendanceDataEmployees, setAttendanceDataEmployees] = useState({});
+  const [attendanceDataStudents, setAttendanceDataStudents] = useState({});
+
   const [showCalendar, setShowCalendar] = useState(false); // Etat pour afficher/masquer le calendrier
 
   // Define the missing state variables
@@ -37,6 +41,8 @@ const DashboardDirectionPedagogique = () => {
   const [students, setStudents] = useState([]);
   const isEtudiant = selectedTab === "Etudiant";
 
+  const [password, setPassword] = useState("");
+  const [emploiDuTempsFile, setEmploiDuTempsFile] = useState(null);
   const [student, setStudent] = useState([]);
   const [employee, setEmployee] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);  // Define selectedImage state
@@ -56,30 +62,29 @@ const DashboardDirectionPedagogique = () => {
     fonction: '',
   });
 
-  const [password, setPassword] = useState("");
-  const [emploiDuTempsFile, setEmploiDuTempsFile] = useState(null);
   const [selectedFormationId, setSelectedFormationId] = React.useState("");
-
+  
   // Fetch Employees or Students based on selected tab
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await axios.get(
-          selectedTab === "Etudiant"
-            ? "http://localhost:3000/api/students"
-            : "http://localhost:3000/api/employees"
-        );
-        setEmployees(res.data);  // Set employees or students data
-        // Fetch attendance status if needed
-        fetchAttendanceStatus(res.data);
-      } catch (err) {
-        console.error("Erreur lors du chargement des données :", err);
+  const fetchData = async () => {
+    try {
+      if (selectedTab === "Etudiant") {
+        const res = await axios.get("http://localhost:3000/api/students");
+        setStudents(res.data);    // <-- ici students
+        fetchAttendanceStatus(res.data, "student");
+      } else {
+        const res = await axios.get("http://localhost:3000/api/employees");
+        setEmployees(res.data);   // <-- ici employees
+        fetchAttendanceStatus(res.data, "employee");
       }
-    };
-  
-    fetchData();
-  }, [selectedTab]);  // This effect runs when selectedTab changes
-  
+    } catch (err) {
+      console.error("Erreur lors du chargement des données :", err);
+    }
+  };
+
+  fetchData();
+}, [selectedTab]);
+
   // Fetch formations list
   useEffect(() => {
     const fetchFormations = async () => {
@@ -114,134 +119,150 @@ const DashboardDirectionPedagogique = () => {
   }, [selectedTab]);
 
   useEffect(() => {
-  const fetchAttendanceStatus = async () => {
-    const dataToFetch = selectedTab === "Etudiant" ? students : employees;
-    const statusData = {};
-
-    for (const person of dataToFetch) {
-      const type = selectedTab.toLowerCase() === "employee" ? "employee" : "student";
-
-      const statusMatin = await fetchAttendanceStatusFromApi(person.id, selectedDate, type, 'matin');
-      const statusSoir = await fetchAttendanceStatusFromApi(person.id, selectedDate, type, 'soir');
-
-      statusData[person.id] = {
-        matin: statusMatin,
-        soir: statusSoir,
-      };
+  const fetchData = async () => {
+    // Si le selectedTab est "Employee", fetch les employés
+    if (selectedTab === "Employee") {
+      const data = {};
+      for (const emp of employees) {
+        data[emp.id] = {
+          matin: await fetchAttendanceStatusFromApi(emp.id, selectedDate, "employee", "matin"),
+          soir: await fetchAttendanceStatusFromApi(emp.id, selectedDate, "employee", "soir"),
+        };
+      }
+      setAttendanceDataEmployees(data);
+    } else if (selectedTab === "Etudiant") {
+      const data = {};
+      for (const student of students) {
+        data[student.id] = {
+          matin: await fetchAttendanceStatusFromApi(student.id, selectedDate, "student", "matin"),
+          soir: await fetchAttendanceStatusFromApi(student.id, selectedDate, "student", "soir"),
+        };
+      }
+      setAttendanceDataStudents(data);
     }
-
-    // Remplace complètement l'ancien état
-    setAttendanceData(statusData);
   };
 
-  if (selectedDate && selectedTab) {
-    fetchAttendanceStatus();
-  }
-}, [selectedDate, selectedTab, students, employees]);
+  if (selectedDate) fetchData();
+}, [selectedDate, selectedTab, employees, students]);  // Ajoute selectedDate comme dépendance
 
+useEffect(() => {
+  if (!selectedDate || !selectedTab) return;
+
+  if (selectedTab === "Employee") {
+    fetchAttendanceStatus(employees, "employee");
+  } else if (selectedTab === "Etudiant") {
+    fetchAttendanceStatus(students, "student");
+  }
+}, [selectedDate, selectedTab, employees, students]);
+
+// Lors de la mise à jour d’un statut :
+const onUpdate = (id, session, newStatus, type) => {
+  if(type === "employee") {
+    setAttendanceDataEmployees(prev => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        [session]: newStatus,
+      }
+    }));
+  } else if(type === "student") {
+    setAttendanceDataStudents(prev => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        [session]: newStatus,
+      }
+    }));
+  }
+  // Puis re-fetch si nécessaire, mais attention à timing/délai
+};
   const capitalize = (str) => str && str.charAt(0).toUpperCase() + str.slice(1);
 
-  const fetchData = async () => {
-    try {
-      const res = await axios.get(
-        selectedTab === "Etudiant"
-          ? "http://localhost:3000/api/students"
-          : "http://localhost:3000/api/employees"
-      );
-      setEmployees(res.data); // Update the employees or students state
-      fetchAttendanceStatus(res.data); // Fetch attendance status if necessary
-    } catch (err) {
-      console.error("Erreur lors du chargement des données :", err);
-    }
-  };
-
-  
 
   const handleDateChange = (e) => {
-    setSelectedDate(e.target.value);
-  };
+  setSelectedDate(e.target.value);  // Met à jour la date
+  fetchAttendanceStatus();  // Appel explicite pour récupérer les statuts après changement de date
+};
 
-  // Filtrer les employés/étudiants par le terme de recherche
+ // Déclarer les filtres avant le return
   const filteredEmployees = employees.filter((employee) =>
     (employee.name || `${employee.nom} ${employee.prenom}`)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     employee.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Filtrer les étudiants par formation et groupe
-  const filteredByFormationAndGroup = filteredEmployees.filter((emp) => {
-    const matchesFormation = selectedFormation ? emp.formation === selectedFormation : true;
-    const matchesGroup = selectedGroup ? emp.groupe === selectedGroup : true;
+  const filteredStudents = students.filter((student) =>
+    (student.name || `${student.nom} ${student.prenom}`)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredStudentsByFormationAndGroup = filteredStudents.filter((stu) => {
+    const matchesFormation = selectedFormation ? stu.formation === selectedFormation : true;
+    const matchesGroup = selectedGroup ? stu.groupe === selectedGroup : true;
     return matchesFormation && matchesGroup;
   });
 
+  
+  const normalizeStatus = (status) => {
+  if (!status) return "";
+  return status
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+};
 
-  // Fetch attendance status for a specific employee/student
-  const fetchAttendanceStatusFromApi = async (id, date, type, session) => {
+const fetchAttendanceStatusFromApi = async (id, date, type, session) => {
   try {
     const res = await axios.get(`http://localhost:3000/api/attendance`, {
       params: { id, date, type, session }
     });
     return res.data.status || "Aucune présence";
   } catch (err) {
+    if (err.response && err.response.status === 404) {
+      // Absence de donnée = "Aucune présence"
+      return "Aucune présence";
+    }
     console.error(`Erreur lors de la récupération du statut de présence (${session}):`, err);
-    return "aucun presence";
+    return "Aucune présence";
   }
 };
+
+
 
 // Exemple de fetch qui récupère matin et soir pour chaque personne
-const fetchAttendanceStatus = async (data) => {
-  const statusData = {};  // stockera : { id: { matin: status, soir: status } }
+const fetchAttendanceStatus = async (data, type) => {
+  const statusData = {};
+  const dateToUse = selectedDate || new Date().toISOString().split("T")[0];
 
-  const dateToUse = selectedDate || new Date().toISOString().split('T')[0];
-
-  for (const emp of data) {
-    const type = selectedTab.toLowerCase() === "employee" ? "employee" : "student";
-
-    // Récupérer le statut matin
-    const statusMatin = await fetchAttendanceStatusFromApi(emp.id, dateToUse, type, 'matin');
-    // Récupérer le statut soir
-    const statusSoir = await fetchAttendanceStatusFromApi(emp.id, dateToUse, type, 'soir');
-
-    statusData[emp.id] = {
-      matin: statusMatin,
-      soir: statusSoir,
-    };
+  for (const person of data) {
+    for (const session of ["matin", "soir"]) {
+      try {
+        const status = await fetchAttendanceStatusFromApi(person.id, dateToUse, type, session);
+        if (!statusData[person.id]) statusData[person.id] = {};
+        statusData[person.id][session] = status;
+      } catch {
+        if (!statusData[person.id]) statusData[person.id] = {};
+        statusData[person.id][session] = "Aucune présence";
+      }
+    }
   }
 
-  console.log("Updated statusData:", statusData);
-  setAttendanceData(statusData);
+  if (type === "employee") {
+    setAttendanceDataEmployees(statusData);
+  } else {
+    setAttendanceDataStudents(statusData);
+  }
 };
 
-
-const onUpdate = (id, session, newStatus) => {
-  setAttendanceData(prev => ({
-    ...prev,
-    [id]: {
-      ...prev[id],
-      [session]: newStatus,
-    },
-  }));
-  fetchAttendanceStatus(); // Recharge les données fraîches du serveur
-};
 
   const getStatusColor = (status) => {
-  if (!status) {  // si status est undefined, null, vide, etc.
-    return "bg-gray-300 text-gray-700";  // couleur par défaut
-  }
-  const normalizedStatus = status.trim().toLowerCase();
-  if (normalizedStatus === "present") {
-    return "bg-green-500 text-white";  // vert pour présent
-  }
-  if (normalizedStatus === "absent") {
-    return "bg-red-500 text-white";  // rouge pour absent
-  }
-  if (normalizedStatus === "absence justifiée") {
-    return "bg-blue-500 text-white";  // bleu pour absence justifiée
-  }
-  return "bg-gray-300 text-gray-700";  // gris par défaut
+  const normalized = normalizeStatus(status);
+  if (normalized === "present") return "bg-green-500 text-white";
+  if (normalized === "absent") return "bg-red-500 text-white";
+  if (normalized === "absence justifiee") return "bg-blue-500 text-white";
+  return "bg-gray-300 text-gray-700";
 };
-
-
+//++++++}+}}+}}}+}}}++++++}}+++}}}}}+}}}+}}}}}}}}++}}}}}}}+++}}+++}}}+}}+}+++++++
 
   // Avatar component
   const Avatar = ({ name, photo }) => {
@@ -317,31 +338,29 @@ const openModalForEmployee = (employee) => {
   };
                                                                 
   const handleModifyStudent = async () => {
-    const formData = new FormData();
-    formData.append("nom", newStudentData.nom);
-    formData.append("prenom", newStudentData.prenom);
-    formData.append("email", newStudentData.email);
-    formData.append("telephone", newStudentData.telephone);
-    formData.append("date_naissance", newStudentData.date_naissance);
-    formData.append("status", newStatus);
-    
-    if (selectedImage) {
-      formData.append("image_student", selectedImage);
-    }
-  
     try {
-      await axios.patch(`http://localhost:3000/api/students/${selectedStudent.id}`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      const formData = new FormData();
+
+      // Ajouter uniquement les champs qui ont une valeur non vide et non "undefined"
+      Object.entries(newStudentData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== 'undefined' && value !== '') {
+          formData.append(key, value);
+        }
       });
+
+      if (selectedImage) {
+        formData.append('image_student', selectedImage);
+      }
+
+      await axios.patch(`http://localhost:3000/api/students/${selectedStudent.id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
       alert('Student data updated successfully');
       closeModal();
     } catch (err) {
       console.error('Error updating student data', err);
-      //alert('Error updating student data');
-      alert('Student data updated successfully');
-
+      alert('Error updating student data');
     }
   };
   
@@ -458,7 +477,6 @@ const openModalForEmployee = (employee) => {
     }
   };
 
-
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
@@ -480,6 +498,7 @@ const openModalForEmployee = (employee) => {
       {/* Main content */}
       <div className="flex-1 p-6">
         {/* Employee Content */}
+
         {selectedTab === "Employee" && (
           <div>
             <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-lg mb-6">
@@ -530,16 +549,16 @@ const openModalForEmployee = (employee) => {
                       <td className="py-3 px-4 text-sm text-gray-700">{selectedDate}</td>
                       <td className="py-3 px-4 text-sm text-gray-700">
   <div className="flex flex-col space-y-1">
-    <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[emp.id]?.matin)}`}>
+    <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceDataEmployees[emp.id]?.matin)}`}>
       Matin :{" "}
       <AttendanceStatusCell
         id={emp.id}
         session="matin"
-        currentStatus={attendanceData[emp.id]?.matin}
+        currentStatus={attendanceDataEmployees[emp.id]?.matin}
         date={selectedDate}
         type="employee"
         onUpdate={(id, session, newStatus) => {
-          setAttendanceData((prev) => ({
+          setAttendanceDataEmployees((prev) => ({
             ...prev,
             [id]: {
               ...prev[id],
@@ -550,16 +569,16 @@ const openModalForEmployee = (employee) => {
         className=""
       />
     </span>
-    <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[emp.id]?.soir)}`}>
+    <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceDataEmployees[emp.id]?.soir)}`}>
       Soir :{" "}
       <AttendanceStatusCell
         id={emp.id}
         session="soir"
-        currentStatus={attendanceData[emp.id]?.soir}
+        currentStatus={attendanceDataEmployees[emp.id]?.soir}
         date={selectedDate}
         type="employee"
         onUpdate={(id, session, newStatus) => {
-          setAttendanceData((prev) => ({
+          setAttendanceDataEmployees((prev) => ({
             ...prev,
             [id]: {
               ...prev[id],
@@ -572,6 +591,7 @@ const openModalForEmployee = (employee) => {
     </span>
   </div>
 </td>
+
 
 
                       <td className="py-3 px-4">
@@ -657,7 +677,7 @@ const openModalForEmployee = (employee) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredByFormationAndGroup.map((student, index) => (
+                  {filteredStudentsByFormationAndGroup.map((student, index) => (
                     <tr key={index} className="border-b hover:bg-gray-50">
                       <td className="py-3 px-4 text-sm text-gray-700">
                         <div className="flex items-center space-x-2">
@@ -672,16 +692,16 @@ const openModalForEmployee = (employee) => {
 
  <td className="py-3 px-4 text-sm text-gray-700">
   <div className="flex flex-col space-y-1">
-    <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[student.id]?.matin)}`}>
+    <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceDataStudents[student.id]?.matin)}`}>
       Matin :{" "}
       <AttendanceStatusCell
         id={student.id}
         session="matin"
-        currentStatus={attendanceData[student.id]?.matin}
+        currentStatus={attendanceDataStudents[student.id]?.matin}
         date={selectedDate}
         type="student"
         onUpdate={(id, session, newStatus) => {
-          setAttendanceData((prev) => ({
+          setAttendanceDataStudents((prev) => ({
             ...prev,
             [id]: {
               ...prev[id],
@@ -691,16 +711,16 @@ const openModalForEmployee = (employee) => {
         }}
       />
     </span>
-    <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceData[student.id]?.soir)}`}>
+    <span className={`px-3 py-1 rounded-lg text-sm ${getStatusColor(attendanceDataStudents[student.id]?.soir)}`}>
       Soir :{" "}
       <AttendanceStatusCell
         id={student.id}
         session="soir"
-        currentStatus={attendanceData[student.id]?.soir}
+        currentStatus={attendanceDataStudents[student.id]?.soir}
         date={selectedDate}
         type="student"
         onUpdate={(id, session, newStatus) => {
-          setAttendanceData((prev) => ({
+          setAttendanceDataStudents((prev) => ({
             ...prev,
             [id]: {
               ...prev[id],
@@ -1132,9 +1152,9 @@ const openModalForEmployee = (employee) => {
 
 
 
+
       </div>
     </div>
   );
 };
-
 export default DashboardDirectionPedagogique;
