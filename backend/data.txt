@@ -60,6 +60,7 @@ CREATE TABLE students (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 6. Table attendance_students (Présences et Absences)
 CREATE TABLE attendance_students (
     id SERIAL PRIMARY KEY,
@@ -77,6 +78,7 @@ CREATE TABLE attendance_employees (
     status VARCHAR(50),  -- 'présent', 'absent', ou 'absent justifié'
     note TEXT
 );
+
 8. Table cours_hours (Heures de Cours)
 CREATE TABLE cours_hours (
     id SERIAL PRIMARY KEY,
@@ -89,17 +91,9 @@ CREATE TABLE cours_hours (
     total_hours INTERVAL,
     date DATE
 );
-9. Table calendar (Calendrier)
-CREATE TABLE calendar (
-    id SERIAL PRIMARY KEY,
-    student_id INT REFERENCES students(id) ON DELETE CASCADE,
-    lesson_date DATE,
-    status VARCHAR(50),  -- 'présent' ou 'absent'
-    formation_id INT REFERENCES formations(id) ON DELETE CASCADE
-);
 
+// login password ===> password123  // pour tout les password
 
-// login :password :  password123  // pour tout les password
 //   proffeseur :
 Jaroudi@iteip.com ,
 Achaachaa@iteip.com ,
@@ -112,15 +106,5 @@ Fennane@iteip.com ,
 //  Direction Pédagogique :
 Barhazi@iteip.com ,
 Rhita@iteip.com ,
-
-
-
-ALTER TABLE attendance_students ALTER COLUMN date TYPE TIMESTAMP;
-ALTER TABLE attendance_employees ALTER COLUMN date TYPE TIMESTAMP;
-
- // et pour inverce :
-
-ALTER TABLE attendance_students ALTER COLUMN date TYPE DATE USING date::DATE;
-ALTER TABLE attendance_employees ALTER COLUMN date TYPE DATE USING date::DATE;
 
 

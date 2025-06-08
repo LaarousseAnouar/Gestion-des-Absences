@@ -1,13 +1,16 @@
 const { Client } = require('pg');
+require('dotenv').config();
 
 const client = new Client({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'anouar',
-  password: '0000',
-  port: 5432,
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
-client.connect();
+client.connect()
+  .then(() => console.log('📡 Connected to Render PostgreSQL!'))
+  .catch(err => console.error('❌ Connection error', err.stack));
 
 module.exports = client;
+
