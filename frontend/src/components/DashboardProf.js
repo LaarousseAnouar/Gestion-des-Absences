@@ -48,7 +48,7 @@ const DashboardProf = () => {
   useEffect(() => {
   const fetchProfessorData = async () => {
     try {
-      const response = await axios.get(`http://localhost:3000/api/professor/${email}/schedule`, {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/professor/${email}/schedule`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       console.log('Données prof API:', response.data);  // <- Mets un log ici pour voir la structure
@@ -102,7 +102,7 @@ const DashboardProf = () => {
 
   useEffect(() => {
     // Fetch all students data
-    axios.get('http://localhost:3000/api/students')
+    axios.get(`${process.env.REACT_APP_API_URL}/api/students`)
       .then(response => {
         setStudents(response.data);
       })
@@ -113,7 +113,7 @@ const DashboardProf = () => {
 
   useEffect(() => {
   students.forEach(student => {
-    axios.get(`http://localhost:3000/api/attendance?date=${selectedDate}&id=${student.id}&type=student&session=${selectedSession}`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api/attendance?date=${selectedDate}&id=${student.id}&type=student&session=${selectedSession}`)
       .then(response => {
         const status = response.data.status;
         setAttendance(prev => ({
@@ -140,7 +140,7 @@ const DashboardProf = () => {
   // Function to fetch courses
   const fetchCourses = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/formations', {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/formations`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       console.log("Fetched courses:", response.data);  // Log the fetched courses to ensure data is correct
@@ -153,7 +153,7 @@ const DashboardProf = () => {
   // Function to fetch groups based on selected course
   const fetchGroupsByFormation = async (formationName) => {
     try {
-      const response = await axios.get(`http://localhost:3000/api/groups?formation=${formationName}`, {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/groups?formation=${formationName}`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       console.log("Fetched groups:", response.data);  // Log the fetched groups to ensure data is correct
@@ -253,7 +253,7 @@ const handleStartClick = async () => {
   //console.log("Données envoyées au backend :", courseData);
 
   try {
-    const response = await axios.post('http://localhost:3000/api/cours_hours', courseData, {
+    const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/cours_hours`, courseData, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     setCoursId(response.data.cours_id);
@@ -312,7 +312,7 @@ const handleFinishClick = async () => {
   console.log("Données envoyées pour mise à jour :", courseData);
 
   try {
-    await axios.put(`http://localhost:3000/api/cours_hours/${coursId}`, courseData, {
+    await axios.put(`${process.env.REACT_APP_API_URL}/api/cours_hours/${coursId}`, courseData, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     alert('Le cours a été terminé et mis à jour avec succès!');

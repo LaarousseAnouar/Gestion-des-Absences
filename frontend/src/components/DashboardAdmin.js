@@ -184,7 +184,7 @@ useEffect(() => {
       try {
         // Récupérer chaque valeur via ton API (5 appels ici, à optimiser si possible)
         const responses = await Promise.all([
-          fetch('http://localhost:3000/api/employee-count'),
+          fetch(`${process.env.REACT_APP_API_URL}/api/employee-count`),
           fetch(`${process.env.REACT_APP_API_URL}/api/daily-absences?type=employees`),
           fetch(`${process.env.REACT_APP_API_URL}/api/daily-presence?type=employees`),
           fetch(`${process.env.REACT_APP_API_URL}/api/weekly-presence?type=employees`),

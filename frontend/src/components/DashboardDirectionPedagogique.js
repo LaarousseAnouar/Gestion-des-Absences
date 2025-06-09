@@ -69,12 +69,12 @@ const DashboardDirectionPedagogique = () => {
   const fetchData = async () => {
     try {
       if (selectedTab === "Etudiant") {
-        const res = await axios.get("http://localhost:3000/api/students");
-        setStudents(res.data);    // <-- ici students
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/students`);
+        setStudents(res.data);
         fetchAttendanceStatus(res.data, "student");
       } else {
-        const res = await axios.get("http://localhost:3000/api/employees");
-        setEmployees(res.data);   // <-- ici employees
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/employees`);
+        setEmployees(res.data);
         fetchAttendanceStatus(res.data, "employee");
       }
     } catch (err) {
@@ -85,11 +85,12 @@ const DashboardDirectionPedagogique = () => {
   fetchData();
 }, [selectedTab]);
 
+
   // Fetch formations list
   useEffect(() => {
     const fetchFormations = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/api/formations");
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/formations`);
         setFormations(res.data);  // Stocker les formations
       } catch (err) {
         console.error("Erreur lors de la récupération des formations :", err);
@@ -104,7 +105,7 @@ const DashboardDirectionPedagogique = () => {
     if (selectedFormation) {
       const fetchGroups = async () => {
         try {
-          const res = await axios.get(`http://localhost:3000/api/groups?formation=${selectedFormation}`);
+          const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/groups?formation=${selectedFormation}`);
           setGroups(res.data);  // Stocker les groupes de la formation sélectionnée
         } catch (err) {
           console.error("Erreur lors de la récupération des groupes :", err);
@@ -213,7 +214,7 @@ const onUpdate = (id, session, newStatus, type) => {
 
 const fetchAttendanceStatusFromApi = async (id, date, type, session) => {
   try {
-    const res = await axios.get(`http://localhost:3000/api/attendance`, {
+    const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/attendance`, {
       params: { id, date, type, session }
     });
     return res.data.status || "Aucune présence";
@@ -324,7 +325,7 @@ const openModalForEmployee = (employee) => {
     if (selectedStudent) {
       try {
         // Call the backend API to update the student's status
-        await axios.patch(`http://localhost:3000/api/students/${selectedStudent.id}/status`, {
+        await axios.patch(`${process.env.REACT_APP_API_URL}/api/students/${selectedStudent.id}/status`, {
           status: newStatus, // Update the status
         });
         alert(`Student status changed to ${newStatus}`);
@@ -352,7 +353,7 @@ const openModalForEmployee = (employee) => {
         formData.append('image_student', selectedImage);
       }
 
-      await axios.patch(`http://localhost:3000/api/students/${selectedStudent.id}`, formData, {
+      await axios.patch(`${process.env.REACT_APP_API_URL}/api/students/${selectedStudent.id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
@@ -369,7 +370,7 @@ const openModalForEmployee = (employee) => {
   if (selectedEmployee) {
     try {
       const response = await axios.patch(
-        `http://localhost:3000/api/employees/${selectedEmployee.id}/status`, 
+        `${process.env.REACT_APP_API_URL}/api/employees/${selectedEmployee.id}/status`, 
         { isActive: false }
       );
       // Mise à jour de l'état après blocage de l'employé
@@ -408,7 +409,7 @@ const openModalForEmployee = (employee) => {
         }
   
         // Envoi de la requête pour modifier les informations de l'employé
-        await axios.put(`http://localhost:3000/api/employees/${selectedEmployee.id}`, formData, {
+        await axios.put(`${process.env.REACT_APP_API_URL}/api/employees/${selectedEmployee.id}`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
   
@@ -453,7 +454,7 @@ const openModalForEmployee = (employee) => {
 
     try {
       const res = await axios.post(
-        `http://localhost:3000/api/${userType === "employee" ? "add-employee" : "add-student"}`,
+        `${process.env.REACT_APP_API_URL}/api/${userType === "employee" ? "add-employee" : "add-student"}`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
@@ -1157,4 +1158,6 @@ const openModalForEmployee = (employee) => {
     </div>
   );
 };
+
 export default DashboardDirectionPedagogique;
+

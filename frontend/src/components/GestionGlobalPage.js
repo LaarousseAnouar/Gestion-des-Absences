@@ -454,7 +454,7 @@ const openModalForEmployee = (employee) => {
 
     try {
       const res = await axios.post(
-        `http://localhost:3000/api/${userType === "employee" ? "add-employee" : "add-student"}`,
+        `${process.env.REACT_APP_API_URL}/api/${userType === "employee" ? "add-employee" : "add-student"}`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
