@@ -2,8 +2,8 @@
 import axios from "axios";
 
 export const isAuthenticated = () => {
-  const user = localStorage.getItem("user"); // Vérifie si l'utilisateur est dans localStorage
-  return user ? JSON.parse(user) : null; // Retourne l'objet utilisateur avec le rôle s'il est connecté
+  const user = localStorage.getItem("user");
+  return user ? JSON.parse(user) : null;
 };
 
 export const logout = () => {
@@ -12,16 +12,19 @@ export const logout = () => {
 
 export const login = async (email, password) => {
   try {
-    const response = await axios.post("http://localhost:3000/api/login", {
-      email,
-      password,
-    });
+    const response = await axios.post(
+      `${process.env.REACT_APP_API_URL}/api/login`, // ✅ lien dynamique
+      {
+        email,
+        password,
+      }
+    );
 
     if (response.data.success) {
-      localStorage.setItem("user", JSON.stringify(response.data.data)); // Enregistre les informations de l'utilisateur
+      localStorage.setItem("user", JSON.stringify(response.data.data));
     }
 
-    return response.data; // Retourne les données de l'utilisateur (role, email, etc.)
+    return response.data;
   } catch (error) {
     console.error("Erreur de connexion", error);
     throw error;

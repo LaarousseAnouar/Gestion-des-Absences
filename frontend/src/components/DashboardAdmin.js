@@ -60,7 +60,7 @@ const [dataEmployes, setDataEmployes] = useState(null);
   useEffect(() => {
   const fetchAdminName = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/admin-name', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/admin-name`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -88,7 +88,7 @@ const [dataEmployes, setDataEmployes] = useState(null);
     const fetchProfessors = async () => {
       setLoading(true);
       try {
-        const response = await fetch('http://localhost:3000/api/employees/professors');
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/employees/professors`);
         if (!response.ok) throw new Error('Erreur lors du chargement des professeurs');
         const data = await response.json();
         setProfessors(data);
@@ -106,7 +106,7 @@ const [dataEmployes, setDataEmployes] = useState(null);
  useEffect(() => {
   const fetchFormations = async () => {
     try {
-      const res = await fetch("http://localhost:3000/api/formations");
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/formations`);
       const data = await res.json();
       setFormations(data);
     } catch (err) {
@@ -128,7 +128,7 @@ useEffect(() => {
     try {
       // Ici on envoie le nom de la formation au backend (et pas son id)
       const formationNom = encodeURIComponent(selectedFormation.nom);
-      const res = await fetch(`http://localhost:3000/api/groups?formation=${formationNom}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/groups?formation=${formationNom}`);
       const data = await res.json();
 
       if (res.ok) {
@@ -157,7 +157,7 @@ useEffect(() => {
 
   const fetchCoursHours = async () => {
     try {
-      let url = `http://localhost:3000/api/cours_hours/teacher/${selectedProfessor.id}`;
+      let url = `${process.env.REACT_APP_API_URL}/api/cours_hours/teacher/${selectedProfessor.id}`;
 
       if (isDateFiltered && selectedDate) {
         // Filtrer uniquement si l'utilisateur a choisi une date
@@ -185,10 +185,10 @@ useEffect(() => {
         // Récupérer chaque valeur via ton API (5 appels ici, à optimiser si possible)
         const responses = await Promise.all([
           fetch('http://localhost:3000/api/employee-count'),
-          fetch('http://localhost:3000/api/daily-absences?type=employees'),
-          fetch('http://localhost:3000/api/daily-presence?type=employees'),
-          fetch('http://localhost:3000/api/weekly-presence?type=employees'),
-          fetch('http://localhost:3000/api/weekly-absences?type=employees'),
+          fetch(`${process.env.REACT_APP_API_URL}/api/daily-absences?type=employees`),
+          fetch(`${process.env.REACT_APP_API_URL}/api/daily-presence?type=employees`),
+          fetch(`${process.env.REACT_APP_API_URL}/api/weekly-presence?type=employees`),
+          fetch(`${process.env.REACT_APP_API_URL}/api/weekly-absences?type=employees`),
         ]);
         const results = await Promise.all(responses.map(r => r.json()));
 
@@ -215,10 +215,10 @@ useEffect(() => {
     const fetchDataEtudiants = async () => {
       try {
         const responses = await Promise.all([
-          fetch('http://localhost:3000/api/daily-absences?type=students'),
-          fetch('http://localhost:3000/api/daily-presence?type=students'),
-          fetch('http://localhost:3000/api/weekly-presence?type=students'),
-          fetch('http://localhost:3000/api/weekly-absences?type=students'),
+          fetch(`${process.env.REACT_APP_API_URL}/api/daily-absences?type=students`),
+          fetch(`${process.env.REACT_APP_API_URL}/api/daily-presence?type=students`),
+          fetch(`${process.env.REACT_APP_API_URL}/api/weekly-presence?type=student`),
+          fetch(`${process.env.REACT_APP_API_URL}/api/weekly-absences?type=students`),
         ]);
         const results = await Promise.all(responses.map(r => r.json()));
 
@@ -247,7 +247,7 @@ useEffect(() => {
   useEffect(() => {
     async function fetchFormationsGroupes() {
       try {
-        const response = await fetch('http://localhost:3000/api/formations-groupes-etudiants');
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/formations-groupes-etudiants`);
         const formationsData = await response.json();
 
         const formations = Object.keys(formationsData);
@@ -301,7 +301,7 @@ const fetchEmploiDuTempsGroupe = async () => {
     return;
   }
   try {
-    const res = await fetch(`http://localhost:3000/api/group/${selectedGroup}`);
+    const res = await fetch(`${process.env.REACT_APP_API_URL}/api/group/${selectedGroup}`);
     if (!res.ok) throw new Error("Erreur lors du chargement de l'emploi du temps du groupe");
     const data = await res.json();
     setEmploiDuTemps(data.emploiDuTempsBase64); // mets à jour l'état avec l'image base64
@@ -319,7 +319,7 @@ const fetchEmploiDuTempsGroupe = async () => {
       return;
     }
     try {
-      const res = await fetch(`http://localhost:3000/api/prof/${selectedProf}`);
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/prof/${selectedProf}`);
       if (!res.ok) throw new Error("Erreur lors du chargement de l'emploi du temps du professeur");
       const data = await res.json();
       setEmploiDuTemps(data.emploiDuTempsBase64);
