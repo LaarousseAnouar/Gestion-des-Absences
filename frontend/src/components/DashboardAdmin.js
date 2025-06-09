@@ -518,12 +518,13 @@ const CarteInfo = ({ titre, apiUrl }) => {
       Informations Employés
     </h2>
     <div className="flex gap-x-8 max-w-6xl mx-auto mb-10">
-      <CarteInfo titre="Nombre d'employés" apiUrl="http://localhost:3000/api/employee-count" />
-      <CarteInfo titre="Absences de la Journée (Employés)" apiUrl="http://localhost:3000/api/daily-absences?type=employees" />
-      <CarteInfo titre="Présence de la Journée (Employés)" apiUrl="http://localhost:3000/api/daily-presence?type=employees" />
-      <CarteInfo titre="Présence de la Semaine (Employés)" apiUrl="http://localhost:3000/api/weekly-presence?type=employees" />
-      <CarteInfo titre="Absences de la Semaine (Employés)" apiUrl="http://localhost:3000/api/weekly-absences?type=employees" />
+      <CarteInfo titre="Nombre d'employés" apiUrl={`${process.env.REACT_APP_API_URL}/api/employee-count`} />
+      <CarteInfo titre="Absences de la Journée (Employés)" apiUrl={`${process.env.REACT_APP_API_URL}/api/daily-absences?type=employees`} />
+      <CarteInfo titre="Présence de la Journée (Employés)" apiUrl={`${process.env.REACT_APP_API_URL}/api/daily-presence?type=employees`} />
+      <CarteInfo titre="Présence de la Semaine (Employés)" apiUrl={`${process.env.REACT_APP_API_URL}/api/weekly-presence?type=employees`} />
+      <CarteInfo titre="Absences de la Semaine (Employés)" apiUrl={`${process.env.REACT_APP_API_URL}/api/weekly-absences?type=employees`} />
     </div>
+
     <div className="max-w-4xl mx-auto px-4">
       {dataEmployes ? (
         <Bar data={dataEmployes} options={optionsDiagramme} />
@@ -541,11 +542,12 @@ const CarteInfo = ({ titre, apiUrl }) => {
       Informations Étudiants
     </h2>
     <div className="flex gap-x-8 max-w-6xl mx-auto mb-10">
-      <CarteInfo titre="Absences de la Journée (Étudiants)" apiUrl="http://localhost:3000/api/daily-absences?type=students" />
-      <CarteInfo titre="Présence de la Journée (Étudiants)" apiUrl="http://localhost:3000/api/daily-presence?type=students" />
-      <CarteInfo titre="Présence de la Semaine (Étudiants)" apiUrl="http://localhost:3000/api/weekly-presence?type=students" />
-      <CarteInfo titre="Absences de la Semaine (Étudiants)" apiUrl="http://localhost:3000/api/weekly-absences?type=students" />
+      <CarteInfo titre="Absences de la Journée (Étudiants)" apiUrl={`${process.env.REACT_APP_API_URL}/api/daily-absences?type=students`} />
+      <CarteInfo titre="Présence de la Journée (Étudiants)" apiUrl={`${process.env.REACT_APP_API_URL}/api/daily-presence?type=students`} />
+      <CarteInfo titre="Présence de la Semaine (Étudiants)" apiUrl={`${process.env.REACT_APP_API_URL}/api/weekly-presence?type=students`} />
+      <CarteInfo titre="Absences de la Semaine (Étudiants)" apiUrl={`${process.env.REACT_APP_API_URL}/api/weekly-absences?type=students`} />
     </div>
+
     <div className="max-w-4xl mx-auto px-4">
       {dataEtudiants ? (
         <Bar data={dataEtudiants} options={optionsDiagramme} />
@@ -574,8 +576,6 @@ const CarteInfo = ({ titre, apiUrl }) => {
     )}
   </div>
 </section>
-
-
 
 
 
